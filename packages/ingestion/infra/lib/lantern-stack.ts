@@ -6,6 +6,8 @@ import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as apigwIntegrations from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as path from "node:path";
 
 /**
@@ -89,9 +91,32 @@ export class LanternStack extends Stack {
       targets: [new targets.LambdaFunction(rollupFn)],
     });
 
+    // CloudFront in front of the HTTP API — the only reason this exists is
+    // to get the CloudFront-Viewer-Country header for free geo resolution
+    // at the edge (see geo.ts). Caching is fully disabled: every request is
+    // a real POST that has to reach the Lambda, nothing here is cacheable.
+    const viewerCountryPolicy = new cloudfront.OriginRequestPolicy(this, "ViewerCountryPolicy", {
+      headerBehavior: cloudfront.OriginRequestHeaderBehavior.allowList("CloudFront-Viewer-Country"),
+    });
+    const cdn = new cloudfront.Distribution(this, "IngestCdn", {
+      defaultBehavior: {
+        origin: new origins.HttpOrigin(
+          `${httpApi.apiId}.execute-api.${this.region}.amazonaws.com`,
+        ),
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+        cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+        originRequestPolicy: viewerCountryPolicy,
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+      },
+    });
+
     new CfnOutput(this, "IngestEndpoint", {
       value: `${httpApi.apiEndpoint}/events`,
-      description: "data-endpoint value for the tracker script's script tag",
+      description: "Raw API Gateway endpoint (bypasses CloudFront — no country resolution)",
+    });
+    new CfnOutput(this, "CdnIngestEndpoint", {
+      value: `https://${cdn.distributionDomainName}/events`,
+      description: "data-endpoint value for the tracker script's script tag (via CloudFront, resolves country)",
     });
   }
 }

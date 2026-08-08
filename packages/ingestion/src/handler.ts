@@ -40,7 +40,7 @@ export async function handler(
     referrer: pageview.referrer,
     timestamp: pageview.timestamp,
     visitorHash: computeVisitorHash(sourceIp, userAgent),
-    country: resolveCountry(sourceIp),
+    country: resolveCountry(event.headers["cloudfront-viewer-country"]),
     device: classifyDevice(userAgent),
   };
 
