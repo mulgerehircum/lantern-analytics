@@ -21,6 +21,8 @@ describe("aggregateEvents", () => {
       referrers: {},
       countries: {},
       devices: {},
+      customEvents: {},
+      eventDimensions: {},
     });
   });
 
@@ -54,5 +56,44 @@ describe("aggregateEvents", () => {
     expect(result.referrers).toEqual({ "google.com": 2, direct: 1 });
     expect(result.countries).toEqual({ MD: 2, PL: 1 });
     expect(result.devices).toEqual({ mobile: 1, desktop: 2 });
+  });
+
+  it("counts custom events by name, keeping them out of pageview/uniques totals", () => {
+    const result = aggregateEvents([
+      event({ name: "contact_click", metadata: { platform: "email" }, referrer: undefined }),
+      event({ name: "contact_click", metadata: { platform: "email" }, referrer: undefined }),
+      event({ name: "cv_download", metadata: { filename: "CV.pdf" }, referrer: undefined }),
+      event({ visitorHash: "a" }),
+    ]);
+    expect(result.pageviews).toBe(1);
+    expect(result.uniques).toBe(1);
+    expect(result.customEvents).toEqual({ contact_click: 2, cv_download: 1 });
+    expect(result.topPages).toEqual({ "/": 1 });
+  });
+
+  it("rolls up string metadata values into per-name dimension counts", () => {
+    const result = aggregateEvents([
+      event({ name: "project_link_click", metadata: { project_title: "PDFloom", link_type: "github" }, referrer: undefined }),
+      event({ name: "project_link_click", metadata: { project_title: "PDFloom", link_type: "live" }, referrer: undefined }),
+      event({ name: "project_filter", metadata: { tech: "React" }, referrer: undefined }),
+      event({ name: "project_filter", metadata: { tech: "React" }, referrer: undefined }),
+    ]);
+    expect(result.eventDimensions).toEqual({
+      project_link_click: {
+        project_title: { PDFloom: 2 },
+        link_type: { github: 1, live: 1 },
+      },
+      project_filter: {
+        tech: { React: 2 },
+      },
+    });
+  });
+
+  it("ignores non-string metadata values in dimension rollups", () => {
+    const result = aggregateEvents([
+      event({ name: "click", metadata: { tag: "button", x: 12, active: true }, referrer: undefined }),
+    ]);
+    expect(result.eventDimensions).toEqual({ click: { tag: { button: 1 } } });
+    expect(result.customEvents).toEqual({ click: 1 });
   });
 });

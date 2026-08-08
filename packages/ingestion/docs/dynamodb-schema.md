@@ -26,6 +26,26 @@ SK: EVENT#2026-08-08T14:32:10Z#f8e2c1
 }
 ```
 
+### Item: raw custom event (fired via `window.lantern.track("contact_click", { platform: "email" })`)
+Same stream/query shape as a pageview — discriminated by the presence of `name`.
+```
+PK: SITE#abc123
+SK: EVENT#2026-08-08T14:32:10Z#f8e2c1
+{
+  name: "contact_click",
+  metadata: { platform: "email" },
+  path: "/contact",
+  country: "MD",
+  device: "desktop",
+  visitorHash: "9f2a...",
+  ttl: 1736345530
+}
+```
+`name`/`metadata` are validated and capped client-side (tracker) and server-side
+(ingest) against shared limits in `@lantern/shared/metadata` — the endpoint is
+public, so nothing on the wire is trusted. Metadata values may be string,
+number, or boolean; only string values are rolled up as dimensions.
+
 ### Item: hourly rollup (written by a rollup Lambda, not the ingestion handler directly)
 ```
 PK: SITE#abc123
@@ -36,9 +56,22 @@ SK: AGG#2026-08-08#14
   topPages: { "/pricing": 88, "/": 140, "/docs": 45 },
   referrers: { "google.com": 120, "direct": 90 },
   countries: { "MD": 40, "PL": 60 },
-  devices: { "desktop": 250, "mobile": 92 }
+  devices: { "desktop": 250, "mobile": 92 },
+  customEvents: { "contact_click": 3, "section_view": 10 },
+  eventDimensions: {
+    "project_link_click": {
+      "project_title": { "PDFloom": 2, "Dataroom": 1 },
+      "link_type": { "github": 2, "live": 1 }
+    }
+  }
 }
 ```
+Custom events never contribute to `pageviews`/`uniques` — those count pageviews
+only. `eventDimensions` is keyed by event name → metadata key → string value.
+Known tradeoff: high-cardinality string metadata (e.g. per-visit IDs) would
+bloat rollup items, so string metadata is assumed to be low-cardinality.
+Rollups written before custom events existed simply lack the last two fields;
+the dashboard treats them as absent.
 No TTL on rollups — these are the permanent record; raw events are disposable once rolled up.
 
 ## Query patterns this supports

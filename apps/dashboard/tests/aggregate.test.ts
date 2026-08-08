@@ -21,6 +21,8 @@ describe("aggregateEvents (dashboard copy, mirrors ingestion's)", () => {
       referrers: {},
       countries: {},
       devices: {},
+      customEvents: {},
+      eventDimensions: {},
     });
   });
 
@@ -36,5 +38,32 @@ describe("aggregateEvents (dashboard copy, mirrors ingestion's)", () => {
 
   it("buckets an empty referrer as direct", () => {
     expect(aggregateEvents([event({ referrer: "" })]).referrers).toEqual({ direct: 1 });
+  });
+
+  it("counts custom events by name, keeping them out of pageview/uniques totals", () => {
+    const result = aggregateEvents([
+      event({ name: "contact_click", metadata: { platform: "email" }, referrer: undefined }),
+      event({ name: "contact_click", metadata: { platform: "email" }, referrer: undefined }),
+      event({ visitorHash: "a" }),
+    ]);
+    expect(result.pageviews).toBe(1);
+    expect(result.uniques).toBe(1);
+    expect(result.customEvents).toEqual({ contact_click: 2 });
+  });
+
+  it("rolls up string metadata values into per-name dimension counts", () => {
+    const result = aggregateEvents([
+      event({ name: "project_link_click", metadata: { project_title: "PDFloom", link_type: "github" }, referrer: undefined }),
+      event({ name: "project_filter", metadata: { tech: "React" }, referrer: undefined }),
+    ]);
+    expect(result.eventDimensions).toEqual({
+      project_link_click: {
+        project_title: { PDFloom: 1 },
+        link_type: { github: 1 },
+      },
+      project_filter: {
+        tech: { React: 1 },
+      },
+    });
   });
 });

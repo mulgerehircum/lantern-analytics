@@ -1,6 +1,6 @@
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
-import type { EnrichedPageviewEvent } from "@lantern/shared";
-import { parsePageviewEvent } from "./validate";
+import type { EnrichedCustomEvent, EnrichedPageviewEvent } from "@lantern/shared";
+import { parseTrackedEvent } from "./validate";
 import { computeVisitorHash } from "./visitor-hash";
 import { classifyDevice } from "./device";
 import { resolveCountry } from "./geo";
@@ -28,26 +28,42 @@ export async function handler(
     return { statusCode: 405, headers, body: "Method Not Allowed" };
   }
 
-  const pageview = parsePageviewEvent(event.body);
-  if (!pageview) {
+  const tracked = parseTrackedEvent(event.body);
+  if (!tracked) {
     return { statusCode: 400, headers, body: "Invalid payload" };
   }
 
   // Source IP: read once, used only as hashing input below, never persisted.
   const sourceIp = event.requestContext.http.sourceIp;
   const userAgent = event.headers["user-agent"] ?? "";
+  const visitorHash = computeVisitorHash(sourceIp, userAgent);
+  const country = resolveCountry(event.headers["cloudfront-viewer-country"]);
+  const device = classifyDevice(userAgent);
 
-  const enriched: EnrichedPageviewEvent = {
-    siteId: pageview.siteId,
-    path: pageview.path,
-    referrer: pageview.referrer,
-    timestamp: pageview.timestamp,
-    visitorHash: computeVisitorHash(sourceIp, userAgent),
-    country: resolveCountry(event.headers["cloudfront-viewer-country"]),
-    device: classifyDevice(userAgent),
-  };
-
-  await putRawEvent(enriched);
+  if ("name" in tracked) {
+    const enriched: EnrichedCustomEvent = {
+      siteId: tracked.siteId,
+      name: tracked.name,
+      path: tracked.path,
+      metadata: tracked.metadata,
+      timestamp: tracked.timestamp,
+      visitorHash,
+      country,
+      device,
+    };
+    await putRawEvent(enriched);
+  } else {
+    const enriched: EnrichedPageviewEvent = {
+      siteId: tracked.siteId,
+      path: tracked.path,
+      referrer: tracked.referrer,
+      timestamp: tracked.timestamp,
+      visitorHash,
+      country,
+      device,
+    };
+    await putRawEvent(enriched);
+  }
 
   return { statusCode: 204, headers };
 }

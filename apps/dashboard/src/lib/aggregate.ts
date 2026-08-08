@@ -10,10 +10,14 @@
 
 export interface RawEventItem {
   path: string;
-  referrer: string;
+  /** Pageview only — absent on custom events. */
+  referrer?: string;
   country: string;
   device: string;
   visitorHash: string;
+  /** Present iff this is a custom event (e.g. "contact_click"). */
+  name?: string;
+  metadata?: Record<string, string | number | boolean>;
 }
 
 export interface HourlyRollup {
@@ -23,6 +27,14 @@ export interface HourlyRollup {
   referrers: Record<string, number>;
   countries: Record<string, number>;
   devices: Record<string, number>;
+  /** Custom-event count by event name, e.g. { "contact_click": 3 }. */
+  customEvents: Record<string, number>;
+  /**
+   * Per-name, per-string-metadata-key dimension counts, e.g.
+   * { "project_link_click": { "project_title": { "PDFloom": 2 } } }.
+   * Only string metadata values become dimensions.
+   */
+  eventDimensions: Record<string, Record<string, Record<string, number>>>;
 }
 
 function increment(map: Record<string, number>, key: string): void {
@@ -35,9 +47,22 @@ export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
   const referrers: Record<string, number> = {};
   const countries: Record<string, number> = {};
   const devices: Record<string, number> = {};
+  const customEvents: Record<string, number> = {};
+  const eventDimensions: Record<string, Record<string, Record<string, number>>> = {};
   const uniqueVisitors = new Set<string>();
 
   for (const event of events) {
+    if (event.name) {
+      increment(customEvents, event.name);
+      const byName = (eventDimensions[event.name] ??= {});
+      for (const [key, value] of Object.entries(event.metadata ?? {})) {
+        if (typeof value !== "string") continue;
+        const byKey = (byName[key] ??= {});
+        increment(byKey, value);
+      }
+      continue;
+    }
+
     increment(topPages, event.path);
     increment(referrers, event.referrer || "direct");
     increment(countries, event.country);
@@ -46,11 +71,13 @@ export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
   }
 
   return {
-    pageviews: events.length,
+    pageviews: events.filter((e) => !e.name).length,
     uniques: uniqueVisitors.size,
     topPages,
     referrers,
     countries,
     devices,
+    customEvents,
+    eventDimensions,
   };
 }

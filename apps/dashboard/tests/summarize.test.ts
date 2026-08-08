@@ -54,4 +54,46 @@ describe("summarizeRollups", () => {
       { hour: "2026-08-08#14", pageviews: 10 },
     ]);
   });
+
+  it("merges custom-event totals across hours and sorts descending", () => {
+    const result = summarizeRollups([
+      rollup({ customEvents: { contact_click: 2, cv_download: 1 } }),
+      rollup({ customEvents: { contact_click: 3, section_view: 5 } }),
+    ]);
+    expect(result.customEvents).toEqual([
+      { name: "contact_click", count: 5 },
+      { name: "section_view", count: 5 },
+      { name: "cv_download", count: 1 },
+    ]);
+  });
+
+  it("merges and flattens dimension breakdowns across hours", () => {
+    const result = summarizeRollups([
+      rollup({
+        eventDimensions: {
+          project_link_click: { project_title: { PDFloom: 2 } },
+        },
+      }),
+      rollup({
+        eventDimensions: {
+          project_link_click: { project_title: { PDFloom: 1, Dataroom: 4 } },
+          project_filter: { tech: { React: 3 } },
+        },
+      }),
+    ]);
+    expect(result.customEventBreakdown).toEqual([
+      { name: "project_link_click", dimension: "project_title", value: "Dataroom", count: 4 },
+      { name: "project_filter", dimension: "tech", value: "React", count: 3 },
+      { name: "project_link_click", dimension: "project_title", value: "PDFloom", count: 3 },
+    ]);
+  });
+
+  it("treats rollups written before custom events existed as empty for the new fields", () => {
+    const result = summarizeRollups([
+      rollup({ pageviews: 3 }),
+      rollup({ pageviews: 1, customEvents: { click: 2 } }),
+    ]);
+    expect(result.customEvents).toEqual([{ name: "click", count: 2 }]);
+    expect(result.customEventBreakdown).toEqual([]);
+  });
 });

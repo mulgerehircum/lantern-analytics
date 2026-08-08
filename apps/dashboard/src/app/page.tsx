@@ -56,6 +56,14 @@ export default async function DashboardPage({
         />
         <Table title="Devices" rows={summary.devices.map((d) => [d.device, d.count] as const)} />
       </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginTop: "2rem" }}>
+        <Table title="Custom events" rows={summary.customEvents.map((e) => [e.name, e.count] as const)} />
+        <Table
+          title="Custom event details"
+          rows={summary.customEventBreakdown.map((b) => [`${b.name} · ${b.dimension}: ${b.value}`, b.count] as const)}
+        />
+      </div>
     </main>
   );
 }

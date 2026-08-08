@@ -34,6 +34,9 @@ export interface HourlyRollupItem {
   referrers: Record<string, number>;
   countries: Record<string, number>;
   devices: Record<string, number>;
+  /** Optional — rollups written before custom events existed lack these. */
+  customEvents?: Record<string, number>;
+  eventDimensions?: Record<string, Record<string, Record<string, number>>>;
 }
 
 /**
@@ -56,10 +59,12 @@ export async function getHourlyRollups(siteId: string): Promise<HourlyRollupItem
 
 export interface RawEventRecord {
   path: string;
-  referrer: string;
+  referrer?: string;
   country: string;
   device: string;
   visitorHash: string;
+  name?: string;
+  metadata?: Record<string, string | number | boolean>;
 }
 
 // Mirrors packages/ingestion/src/rollup-store.ts's hourPrefix() — kept as a

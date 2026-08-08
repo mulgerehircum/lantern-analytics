@@ -8,6 +8,10 @@ export interface DashboardSummary {
   countries: Array<{ country: string; count: number }>;
   devices: Array<{ device: string; count: number }>;
   timeSeries: Array<{ hour: string; pageviews: number }>;
+  /** Custom-event totals per event name, e.g. { name: "contact_click", count: 3 }. */
+  customEvents: Array<{ name: string; count: number }>;
+  /** Flattened per-name, per-dimension rows, e.g. contact_click · platform · email. */
+  customEventBreakdown: Array<{ name: string; dimension: string; value: string; count: number }>;
 }
 
 function mergeMaps(maps: Record<string, number>[]): Record<string, number> {
@@ -26,7 +30,55 @@ function toSortedEntries<K extends string>(
 ): Array<Record<K, string> & { count: number }> {
   return Object.entries(map)
     .map(([key, count]) => ({ [keyName]: key, count }) as Record<K, string> & { count: number })
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => b.count - a.count || a[keyName].localeCompare(b[keyName]));
+}
+
+/**
+ * Sums per-event-name totals and flattens the nested eventDimensions maps
+ * into display rows. Old rollup items written before custom events existed
+ * simply lack the fields (treated as empty).
+ */
+function summarizeCustomEvents(
+  rollups: HourlyRollupItem[],
+): { customEvents: DashboardSummary["customEvents"]; customEventBreakdown: DashboardSummary["customEventBreakdown"] } {
+  const totals: Record<string, number> = {};
+  const dimensions: Record<string, Record<string, Record<string, number>>> = {};
+
+  for (const rollup of rollups) {
+    for (const [name, count] of Object.entries(rollup.customEvents ?? {})) {
+      totals[name] = (totals[name] ?? 0) + count;
+    }
+    for (const [name, byKey] of Object.entries(rollup.eventDimensions ?? {})) {
+      const targetName = (dimensions[name] ??= {});
+      for (const [key, byValue] of Object.entries(byKey)) {
+        const targetKey = (targetName[key] ??= {});
+        for (const [value, count] of Object.entries(byValue)) {
+          targetKey[value] = (targetKey[value] ?? 0) + count;
+        }
+      }
+    }
+  }
+
+  const customEvents = toSortedEntries(totals, "name");
+  const customEventBreakdown: DashboardSummary["customEventBreakdown"] = [];
+  for (const [name, byKey] of Object.entries(dimensions)) {
+    for (const [dimension, byValue] of Object.entries(byKey)) {
+      for (const [value, count] of Object.entries(byValue)) {
+        customEventBreakdown.push({ name, dimension, value, count });
+      }
+    }
+  }
+  // Count descending; ties broken by key so the order never depends on object
+  // insertion order (Array#sort is stable but insertion order varies).
+  customEventBreakdown.sort(
+    (a, b) =>
+      b.count - a.count ||
+      a.name.localeCompare(b.name) ||
+      a.dimension.localeCompare(b.dimension) ||
+      a.value.localeCompare(b.value),
+  );
+
+  return { customEvents, customEventBreakdown };
 }
 
 /**
@@ -50,5 +102,17 @@ export function summarizeRollups(rollups: HourlyRollupItem[]): DashboardSummary 
     .sort((a, b) => a.SK.localeCompare(b.SK))
     .map((r) => ({ hour: r.SK.replace("AGG#", ""), pageviews: r.pageviews }));
 
-  return { totalPageviews, totalUniques, topPages, referrers, countries, devices, timeSeries };
+  const { customEvents, customEventBreakdown } = summarizeCustomEvents(rollups);
+
+  return {
+    totalPageviews,
+    totalUniques,
+    topPages,
+    referrers,
+    countries,
+    devices,
+    timeSeries,
+    customEvents,
+    customEventBreakdown,
+  };
 }
