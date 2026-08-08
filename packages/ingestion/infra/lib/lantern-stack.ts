@@ -91,12 +91,27 @@ export class LanternStack extends Stack {
       targets: [new targets.LambdaFunction(rollupFn)],
     });
 
-    // CloudFront in front of the HTTP API — the only reason this exists is
+    // CloudFront in front of the HTTP API — the main reason this exists is
     // to get the CloudFront-Viewer-Country header for free geo resolution
     // at the edge (see geo.ts). Caching is fully disabled: every request is
     // a real POST that has to reach the Lambda, nothing here is cacheable.
+    //
+    // The header allowlist must ALSO include Origin/Access-Control-Request-*,
+    // not just the country header: API Gateway's own automatic CORS preflight
+    // handling needs those to recognize an OPTIONS request as a CORS
+    // preflight and generate the Access-Control-Allow-* response headers. An
+    // allowlist containing only CloudFront-Viewer-Country silently stripped
+    // them before they reached the origin, so preflights came back with zero
+    // CORS headers and every real browser request failed CORS (caught live:
+    // curl showed apigw-requestid present but no access-control-* headers on
+    // the OPTIONS response).
     const viewerCountryPolicy = new cloudfront.OriginRequestPolicy(this, "ViewerCountryPolicy", {
-      headerBehavior: cloudfront.OriginRequestHeaderBehavior.allowList("CloudFront-Viewer-Country"),
+      headerBehavior: cloudfront.OriginRequestHeaderBehavior.allowList(
+        "CloudFront-Viewer-Country",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers",
+      ),
     });
     const cdn = new cloudfront.Distribution(this, "IngestCdn", {
       defaultBehavior: {
