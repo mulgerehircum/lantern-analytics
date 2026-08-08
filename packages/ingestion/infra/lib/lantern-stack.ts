@@ -46,7 +46,13 @@ export class LanternStack extends Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: "handler.handler",
       code: lambda.Code.fromAsset(LAMBDA_DIST_DIR),
-      environment: { EVENTS_TABLE_NAME: table.tableName },
+      environment: {
+        EVENTS_TABLE_NAME: table.tableName,
+        // Comma/space-separated IPs and CIDRs whose events are dropped at
+        // ingest (e.g. your own egress IPs). Deployment-time config — set it
+        // at `cdk deploy`, mirroring the SITE_IDS env-as-registry precedent.
+        EXCLUDED_IPS: process.env.EXCLUDED_IPS ?? "",
+      },
       memorySize: 128,
       timeout: Duration.seconds(5),
     });

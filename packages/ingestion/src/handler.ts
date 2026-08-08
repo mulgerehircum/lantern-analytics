@@ -6,6 +6,10 @@ import { classifyDevice } from "./device";
 import { resolveCountry } from "./geo";
 import { putRawEvent } from "./dynamodb";
 import { corsHeaders } from "./cors";
+import { isIpExcluded, parseExcludedIps } from "./ip-exclude";
+
+// Parsed once per Lambda container (the env var is set at deploy time).
+const EXCLUDED_IPS = parseExcludedIps(process.env.EXCLUDED_IPS);
 
 /**
  * API Gateway (HTTP API) entry point. Both OPTIONS and POST are routed here
@@ -35,6 +39,14 @@ export async function handler(
 
   // Source IP: read once, used only as hashing input below, never persisted.
   const sourceIp = event.requestContext.http.sourceIp;
+
+  // Self-exclusion: drop events from excluded IPs/CIDRs before any hashing or
+  // persistence. 204 is indistinguishable from a normal success on purpose —
+  // analytics must never surface an error to the caller.
+  if (isIpExcluded(sourceIp, EXCLUDED_IPS)) {
+    return { statusCode: 204, headers };
+  }
+
   const userAgent = event.headers["user-agent"] ?? "";
   const visitorHash = computeVisitorHash(sourceIp, userAgent);
   const country = resolveCountry(event.headers["cloudfront-viewer-country"]);

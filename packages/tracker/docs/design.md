@@ -21,6 +21,11 @@ is a derived server-side hash (IP + UA + daily-rotating salt) that changes every
 this is what "cookieless but still counts unique visitors" means in practice, same
 mechanism Plausible/Simple Analytics use.
 
+The one deliberate exception to "no browser storage": the owner can set a
+`lantern_ignore` localStorage flag (via `window.lantern.ignore()` or the documented
+one-liner) that makes the tracker no-op. This is a user-set preference, never written
+for visitors, and holds no identity — see `ignore.ts`.
+
 ## DNT / privacy signals
 Respect `navigator.doNotTrack` — if set, the script no-ops entirely (doesn't even fire
 the beacon). This is a real behavioral commitment, not just a settings toggle buried in

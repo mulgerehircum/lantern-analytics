@@ -3,11 +3,15 @@ import { readConfig } from "./config";
 import { sendBeacon } from "./beacon";
 import { getReferrerHostname } from "./referrer";
 import { isDoNotTrackEnabled } from "./dnt";
+import { isIgnored, setIgnored } from "./ignore";
 import { buildCustomEvent } from "./track";
 
 declare global {
   interface Window {
-    lantern?: { track: (name: string, metadata?: Record<string, string | number | boolean>) => void };
+    lantern?: {
+      track: (name: string, metadata?: Record<string, string | number | boolean>) => void;
+      ignore: () => void;
+    };
   }
 }
 
@@ -37,7 +41,7 @@ function trackPageview(): void {
  * surface an error to the host page.
  */
 function track(name: string, metadata?: Record<string, string | number | boolean>): void {
-  if (isDoNotTrackEnabled()) return;
+  if (isDoNotTrackEnabled() || isIgnored()) return;
   if (!config) return;
 
   const event = buildCustomEvent(config.siteId, name, metadata);
@@ -46,12 +50,13 @@ function track(name: string, metadata?: Record<string, string | number | boolean
   sendBeacon(config.endpoint, event);
 }
 
-window.lantern = { track };
+window.lantern = { track, ignore: setIgnored };
 
 // Entry point — runs once, synchronously, at script load. No cookies, no
-// localStorage identity, no client-side hashing (uniqueness is derived
+// localStorage identity (the one exception is the owner-set `lantern_ignore`
+// opt-out flag, see ignore.ts), no client-side hashing (uniqueness is derived
 // server-side from IP + UA, see packages/ingestion). See docs/design.md for
 // the full reasoning behind what this deliberately does NOT do.
-if (!isDoNotTrackEnabled()) {
+if (!isDoNotTrackEnabled() && !isIgnored()) {
   trackPageview();
 }
