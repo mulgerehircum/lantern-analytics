@@ -6,6 +6,7 @@ import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as apigwIntegrations from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
+import * as logs from "aws-cdk-lib/aws-logs";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as path from "node:path";
@@ -55,6 +56,9 @@ export class LanternStack extends Stack {
       },
       memorySize: 128,
       timeout: Duration.seconds(5),
+      // Logs default to never expiring; bound them so the rollup's new
+      // per-run debug lines don't accumulate forever.
+      logRetention: logs.RetentionDays.TWO_WEEKS,
     });
     table.grantWriteData(ingestionFn);
 
@@ -70,6 +74,7 @@ export class LanternStack extends Stack {
       },
       memorySize: 128,
       timeout: Duration.seconds(30),
+      logRetention: logs.RetentionDays.TWO_WEEKS,
     });
     table.grantReadWriteData(rollupFn);
 

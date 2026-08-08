@@ -17,13 +17,38 @@ export async function handler(): Promise<void> {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  if (siteIds.length === 0) return;
 
   const hour = hourPrefix(new Date(Date.now() - 60 * 60 * 1000));
 
+  // Every run logs an aggregate-only summary (counts, never raw events/paths/
+  // hashes/IPs) so a missing dashboard datapoint is one CloudWatch query away
+  // from being explained — the scheduled + TTL two-tier model is otherwise a
+  // black box.
+  if (siteIds.length === 0) {
+    console.log(JSON.stringify({ rollup: { hour, sites: 0, status: "no-sites-configured" } }));
+    return;
+  }
+
   for (const siteId of siteIds) {
     const events = await queryRawEventsForHour(siteId, hour);
-    if (events.length === 0) continue;
-    await putHourlyRollup(siteId, hour, aggregateEvents(events));
+    if (events.length === 0) {
+      console.log(JSON.stringify({ rollup: { hour, siteId, eventCount: 0, status: "empty" } }));
+      continue;
+    }
+    const rollup = aggregateEvents(events);
+    await putHourlyRollup(siteId, hour, rollup);
+    console.log(
+      JSON.stringify({
+        rollup: {
+          hour,
+          siteId,
+          status: "wrote",
+          eventCount: events.length,
+          pageviews: rollup.pageviews,
+          uniques: rollup.uniques,
+          customEvents: Object.keys(rollup.customEvents).length,
+        },
+      }),
+    );
   }
 }
