@@ -67,19 +67,16 @@ export class LanternStack extends Stack {
     });
     table.grantReadWriteData(rollupFn);
 
-    // corsPreflight handles OPTIONS at the gateway itself — no Lambda
-    // invocation (and no cost) per preflight. The Lambda's own OPTIONS
-    // branch (handler.ts) stays as a defensive fallback, not the primary path.
-    const httpApi = new apigwv2.HttpApi(this, "IngestApi", {
-      corsPreflight: {
-        allowOrigins: ["*"],
-        allowMethods: [apigwv2.CorsHttpMethod.POST, apigwv2.CorsHttpMethod.OPTIONS],
-        allowHeaders: ["Content-Type"],
-      },
-    });
+    // No declarative corsPreflight here — that feature requires a static,
+    // known origin list once AllowCredentials is true, which doesn't fit
+    // "any site can embed this tracker" (sendBeacon forces credentials mode
+    // on cross-origin requests, with no opt-out). Both OPTIONS and POST
+    // route to the same Lambda, which handles CORS itself by dynamically
+    // reflecting the real Origin — see cors.ts for the full reasoning.
+    const httpApi = new apigwv2.HttpApi(this, "IngestApi");
     httpApi.addRoutes({
       path: "/events",
-      methods: [apigwv2.HttpMethod.POST],
+      methods: [apigwv2.HttpMethod.POST, apigwv2.HttpMethod.OPTIONS],
       integration: new apigwIntegrations.HttpLambdaIntegration(
         "IngestIntegration",
         ingestionFn,
