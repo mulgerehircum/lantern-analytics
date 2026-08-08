@@ -49,7 +49,11 @@ export default async function DashboardPage({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginTop: "2rem" }}>
         <Table title="Top pages" rows={summary.topPages.map((p) => [p.path, p.count] as const)} />
         <Table title="Referrers" rows={summary.referrers.map((r) => [r.referrer, r.count] as const)} />
-        <Table title="Countries" rows={summary.countries.map((c) => [c.country, c.count] as const)} />
+        <Table
+          title="Countries"
+          rows={summary.countries.map((c) => [c.country, c.count] as const)}
+          renderKey={(code) => <CountryLabel code={code} />}
+        />
         <Table title="Devices" rows={summary.devices.map((d) => [d.device, d.count] as const)} />
       </div>
     </main>
@@ -65,7 +69,15 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function Table({ title, rows }: { title: string; rows: ReadonlyArray<readonly [string, number]> }) {
+function Table({
+  title,
+  rows,
+  renderKey,
+}: {
+  title: string;
+  rows: ReadonlyArray<readonly [string, number]>;
+  renderKey?: (key: string) => React.ReactNode;
+}) {
   return (
     <div>
       <h3>{title}</h3>
@@ -78,13 +90,25 @@ function Table({ title, rows }: { title: string; rows: ReadonlyArray<readonly [s
           )}
           {rows.map(([key, count]) => (
             <tr key={key || "(empty)"}>
-              <td style={{ padding: "4px 0" }}>{key || "(empty)"}</td>
+              <td style={{ padding: "4px 0" }}>{renderKey ? renderKey(key) : key || "(empty)"}</td>
               <td style={{ padding: "4px 0", textAlign: "right" }}>{count}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Country flag from FlagCDN, keyed by ISO 3166-1 alpha-2 (lowercase). */
+function CountryLabel({ code }: { code: string }) {
+  if (!code || code.length !== 2) return <>{code || "(empty)"}</>;
+  const flag = `https://flagcdn.com/w20/${code.toLowerCase()}.png`;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+      <img src={flag} alt={`${code} flag`} width={20} height={15} loading="lazy" style={{ borderRadius: 2 }} />
+      {code}
+    </span>
   );
 }
 
