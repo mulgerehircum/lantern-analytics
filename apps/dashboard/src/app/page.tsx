@@ -1,4 +1,4 @@
-import { aggregateEvents } from "@lantern/ingestion/aggregate";
+import { aggregateEvents } from "@/lib/aggregate";
 import { getHourlyRollups, getLiveRawEvents, currentHourSK } from "@/lib/dynamodb";
 import { summarizeRollups } from "@/lib/summarize";
 
