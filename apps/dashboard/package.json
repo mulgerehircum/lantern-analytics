@@ -2,5 +2,26 @@
   "name": "@lantern/dashboard",
   "version": "0.0.0",
   "private": true,
-  "description": "Next.js dashboard: charts, session replay, AI query interface"
+  "description": "Next.js dashboard: charts, session replay, AI query interface",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.677.0",
+    "@aws-sdk/lib-dynamodb": "^3.677.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
 }

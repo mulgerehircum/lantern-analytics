@@ -1,4 +1,4 @@
-import { Stack, StackProps, Duration, RemovalPolicy } from "aws-cdk-lib";
+import { Stack, StackProps, Duration, RemovalPolicy, CfnOutput } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
@@ -87,6 +87,11 @@ export class LanternStack extends Stack {
     new events.Rule(this, "RollupSchedule", {
       schedule: events.Schedule.rate(Duration.hours(1)),
       targets: [new targets.LambdaFunction(rollupFn)],
+    });
+
+    new CfnOutput(this, "IngestEndpoint", {
+      value: `${httpApi.apiEndpoint}/events`,
+      description: "data-endpoint value for the tracker script's script tag",
     });
   }
 }
