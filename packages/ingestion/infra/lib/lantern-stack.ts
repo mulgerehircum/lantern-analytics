@@ -9,6 +9,7 @@ import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as path from "node:path";
+import { EXCLUDED_IPS } from "./excluded-ips";
 
 /**
  * Free-tier-pinned by design. PROVISIONED billing at exactly 25 RCU/25 WCU is
@@ -48,10 +49,9 @@ export class LanternStack extends Stack {
       code: lambda.Code.fromAsset(LAMBDA_DIST_DIR),
       environment: {
         EVENTS_TABLE_NAME: table.tableName,
-        // Comma/space-separated IPs and CIDRs whose events are dropped at
-        // ingest (e.g. your own egress IPs). Deployment-time config — set it
-        // at `cdk deploy`, mirroring the SITE_IDS env-as-registry precedent.
-        EXCLUDED_IPS: process.env.EXCLUDED_IPS ?? "",
+        // Committed exclusions (excluded-ips.ts) merged with any deployment-time
+        // override — e.g. `$env:EXCLUDED_IPS = "1.2.3.4"` before `cdk deploy`.
+        EXCLUDED_IPS: [...EXCLUDED_IPS, ...(process.env.EXCLUDED_IPS ?? "").split(/[\s,]+/).filter(Boolean)].join(","),
       },
       memorySize: 128,
       timeout: Duration.seconds(5),
