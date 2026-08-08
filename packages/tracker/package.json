@@ -2,6 +2,18 @@
   "name": "@lantern/tracker",
   "version": "0.0.0",
   "private": true,
-  "description": "Client-side tracking script: cookieless pageview beacon + rrweb session capture",
-  "main": "src/index.ts"
+  "description": "Client-side tracking script: cookieless pageview beacon (Phase 1); rrweb session capture (Phase 2, not built yet)",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --minify --format=iife --outfile=dist/tracker.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lantern/shared": "*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  }
 }
