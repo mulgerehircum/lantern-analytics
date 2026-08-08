@@ -1,0 +1,7 @@
+{
+  "name": "@lantern/tracker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Client-side tracking script: cookieless pageview beacon + rrweb session capture",
+  "main": "src/index.ts"
+}

@@ -1,0 +1,8 @@
+{
+  "name": "lantern-analytics",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
+}

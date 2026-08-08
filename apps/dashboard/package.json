@@ -1,0 +1,6 @@
+{
+  "name": "@lantern/dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Next.js dashboard: charts, session replay, AI query interface"
+}

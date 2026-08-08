@@ -1,0 +1,7 @@
+{
+  "name": "@lantern/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Event schema/types shared across tracker, ingestion, and dashboard",
+  "main": "src/index.ts"
+}

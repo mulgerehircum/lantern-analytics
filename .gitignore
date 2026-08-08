@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+.next/
+.env
+.env.local
+.env*.local
+.vercel/
+.aws-sam/
+cdk.out/
+*.log
+.DS_Store
