@@ -24,7 +24,6 @@ describe("site registry", () => {
       "andrii-portfolio",
       "ukraine-warmap",
       "dataroom-technical-assessment",
-      "noire-winery-landing",
       "noire-winery-landing-v1",
       "pdfloom-frontend",
     ]) {
