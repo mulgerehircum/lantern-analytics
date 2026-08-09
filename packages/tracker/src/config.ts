@@ -1,6 +1,8 @@
 export interface TrackerConfig {
   siteId: string;
   endpoint: string;
+  /** True when the script tag carries `data-spa`: fire a pageview per client-side route change. */
+  spa: boolean;
 }
 
 /**
@@ -17,5 +19,5 @@ export function readConfig(): TrackerConfig | null {
   const endpoint = script.dataset.endpoint;
   if (!siteId || !endpoint) return null;
 
-  return { siteId, endpoint };
+  return { siteId, endpoint, spa: script.dataset.spa !== undefined };
 }

@@ -5,6 +5,7 @@ import { getReferrerHostname } from "./referrer";
 import { isDoNotTrackEnabled } from "./dnt";
 import { isIgnored, setIgnored } from "./ignore";
 import { buildCustomEvent } from "./track";
+import { enableSpaTracking } from "./spa";
 
 declare global {
   interface Window {
@@ -22,12 +23,12 @@ declare global {
  */
 const config = readConfig();
 
-function trackPageview(): void {
+function trackPageview(path: string = location.pathname): void {
   if (!config) return;
 
   const event: PageviewEvent = {
     siteId: config.siteId,
-    path: location.pathname,
+    path,
     referrer: getReferrerHostname(),
     timestamp: new Date().toISOString(),
   };
@@ -59,4 +60,11 @@ window.lantern = { track, ignore: setIgnored };
 // the full reasoning behind what this deliberately does NOT do.
 if (!isDoNotTrackEnabled() && !isIgnored()) {
   trackPageview();
+}
+
+// Opt-in SPA route tracking (`data-spa` on the script tag): fires a pageview
+// per client-side navigation, deduped by pathname. DNT/ignore are re-checked
+// per navigation, matching window.lantern.track.
+if (config?.spa) {
+  enableSpaTracking(window, trackPageview, () => !isDoNotTrackEnabled() && !isIgnored());
 }
