@@ -4,6 +4,7 @@ import { summarizeRollups } from "@/lib/summarize";
 import type { DashboardSummary } from "@/lib/summarize";
 import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filter";
 import type { DashboardFilters } from "@/lib/filter";
+import { DEFAULT_SITE_ID, SITES, getSite } from "@/lib/sites";
 
 /**
  * Server Component — fetches DynamoDB directly, server-side. No client-side
@@ -34,7 +35,12 @@ export default async function DashboardPage({
   }>;
 }) {
   const params = await searchParams;
-  const siteId = params.siteId ?? "test-site";
+  // Registered sites are the normal case. An unregistered siteId still renders
+  // (its data exists in DynamoDB) but is flagged below; the default is the
+  // portfolio, the site with the most traffic.
+  const requestedSiteId = params.siteId?.trim() || DEFAULT_SITE_ID;
+  const site = getSite(requestedSiteId);
+  const siteId = site ? site.siteId : requestedSiteId;
   const filters = parseFilters(params);
 
   // Rollups + live events are always fetched: the unfiltered summary is the
@@ -60,7 +66,20 @@ export default async function DashboardPage({
 
   return (
     <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem", maxWidth: 960, margin: "0 auto" }}>
-      <h1>Lantern Analytics — {siteId}</h1>
+      <ProjectSelector siteId={siteId} siteUrl={site?.url} />
+      <h1 style={{ margin: "0.25rem 0 0" }}>
+        Lantern Analytics — {site ? site.name : siteId}
+        {site ? (
+          <span style={{ fontSize: "0.85rem", fontWeight: 400, color: "#666" }}>
+            {" "}
+            <a href={site.url} target="_blank" rel="noreferrer">
+              (live)
+            </a>
+          </span>
+        ) : (
+          <span style={{ fontSize: "0.85rem", fontWeight: 400, color: "#b45309" }}> — not in site registry</span>
+        )}
+      </h1>
       {!filtered && liveEvents.length > 0 && (
         <p style={{ color: "#4f46e5", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
           Includes {liveEvents.length} live event{liveEvents.length === 1 ? "" : "s"} from the current
@@ -111,6 +130,47 @@ function Stat({ label, value }: { label: string; value: number }) {
       <div style={{ fontSize: "2rem", fontWeight: 700 }}>{value}</div>
       <div style={{ color: "#666" }}>{label}</div>
     </div>
+  );
+}
+
+/**
+ * Project selector — a plain GET form, same no-JS design as the filter bar.
+ * Submitting navigates to ?siteId=<id>, clearing filters: switching projects
+ * is a "start fresh here" action, and filters are per-site anyway.
+ */
+function ProjectSelector({ siteId, siteUrl }: { siteId: string; siteUrl?: string }) {
+  return (
+    <form
+      method="GET"
+      style={{
+        display: "flex",
+        gap: "0.5rem",
+        alignItems: "flex-end",
+        flexWrap: "wrap",
+        marginBottom: "0.5rem",
+      }}
+    >
+      <label style={{ fontSize: "0.75rem", color: "#555" }}>
+        Project
+        <br />
+        <select name="siteId" defaultValue={siteId} style={fieldStyle}>
+          {SITES.map((s) => (
+            <option key={s.siteId} value={s.siteId}>
+              {s.name}
+            </option>
+          ))}
+          {!SITES.some((s) => s.siteId === siteId) && <option value={siteId}>{siteId} (unregistered)</option>}
+        </select>
+      </label>
+      <button type="submit" style={{ ...fieldStyle, cursor: "pointer", background: "#4f46e5", color: "#fff", border: "none" }}>
+        Open
+      </button>
+      {siteUrl && (
+        <a href={siteUrl} target="_blank" rel="noreferrer" style={{ fontSize: "0.85rem", color: "#4f46e5" }}>
+          {siteUrl}
+        </a>
+      )}
+    </form>
   );
 }
 

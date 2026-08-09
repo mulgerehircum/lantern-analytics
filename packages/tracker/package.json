@@ -7,6 +7,8 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "esbuild src/index.ts --bundle --minify --format=iife --outfile=dist/tracker.js",
+    "build:release": "npm run build && npm run sync:dashboard",
+    "sync:dashboard": "node -e \"require('fs').copyFileSync('dist/tracker.js', '../../apps/dashboard/public/tracker.js')\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
