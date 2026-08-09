@@ -1,6 +1,9 @@
 import { aggregateEvents } from "@/lib/aggregate";
-import { getHourlyRollups, getLiveRawEvents, currentHourSK } from "@/lib/dynamodb";
+import { getHourlyRollups, getLiveRawEvents, getAllRawEvents, currentHourSK } from "@/lib/dynamodb";
 import { summarizeRollups } from "@/lib/summarize";
+import type { DashboardSummary } from "@/lib/summarize";
+import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filter";
+import type { DashboardFilters } from "@/lib/filter";
 
 /**
  * Server Component — fetches DynamoDB directly, server-side. No client-side
@@ -19,25 +22,50 @@ import { summarizeRollups } from "@/lib/summarize";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ siteId?: string }>;
+  searchParams: Promise<{ siteId?: string; path?: string; referrer?: string; country?: string; device?: string }>;
 }) {
-  const { siteId = "test-site" } = await searchParams;
+  const params = await searchParams;
+  const siteId = params.siteId ?? "test-site";
+  const filters = parseFilters(params);
+
+  // Rollups + live events are always fetched: the unfiltered summary is the
+  // default view AND the source of the filter dropdown options.
   const [rollups, liveEvents] = await Promise.all([
     getHourlyRollups(siteId),
     getLiveRawEvents(siteId),
   ]);
   const liveRollup = { SK: currentHourSK(), ...aggregateEvents(liveEvents) };
-  const summary = summarizeRollups([...rollups, liveRollup]);
+
+  // When a dimension filter is active, the AGG# rollups can't answer it (they
+  // store per-hour counts within each dimension, not cross-dimension slices) —
+  // recompute from raw events instead. See lib/filter.ts for why this covers
+  // only the trailing ~30 days.
+  let summary: DashboardSummary;
+  if (hasActiveFilter(filters)) {
+    const rawEvents = await getAllRawEvents(siteId);
+    summary = summarizeRollups(buildFilteredRollups(rawEvents, filters));
+  } else {
+    summary = summarizeRollups([...rollups, liveRollup]);
+  }
+  const filtered = hasActiveFilter(filters);
 
   return (
     <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem", maxWidth: 960, margin: "0 auto" }}>
       <h1>Lantern Analytics — {siteId}</h1>
-      {liveEvents.length > 0 && (
+      {!filtered && liveEvents.length > 0 && (
         <p style={{ color: "#4f46e5", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
           Includes {liveEvents.length} live event{liveEvents.length === 1 ? "" : "s"} from the current
           hour, not yet permanently rolled up.
         </p>
       )}
+      {filtered && (
+        <p style={{ color: "#b45309", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
+          Filtered view — recomputed from raw events, so it covers the trailing ~30 days (the
+          raw-event TTL) rather than full history.
+        </p>
+      )}
+
+      <FilterBar siteId={siteId} filters={filters} summary={summary} />
 
       <section style={{ display: "flex", gap: "2rem", margin: "1.5rem 0" }}>
         <Stat label="Pageviews" value={summary.totalPageviews} />
@@ -74,6 +102,95 @@ function Stat({ label, value }: { label: string; value: number }) {
       <div style={{ fontSize: "2rem", fontWeight: 700 }}>{value}</div>
       <div style={{ color: "#666" }}>{label}</div>
     </div>
+  );
+}
+
+const fieldStyle: React.CSSProperties = {
+  padding: "6px 8px",
+  borderRadius: 6,
+  border: "1px solid #ccc",
+  fontSize: "0.85rem",
+};
+
+/**
+ * Dimension filters. A plain GET form — no client JS, consistent with the
+ * page's server-component design. Options are built from the unfiltered
+ * summary so the dropdowns always show values that actually exist in the data.
+ */
+function FilterBar({
+  siteId,
+  filters,
+  summary,
+}: {
+  siteId: string;
+  filters: DashboardFilters;
+  summary: DashboardSummary;
+}) {
+  return (
+    <form
+      method="GET"
+      style={{
+        display: "flex",
+        gap: "0.5rem",
+        alignItems: "flex-end",
+        flexWrap: "wrap",
+        margin: "1rem 0",
+        padding: "0.75rem",
+        border: "1px solid #ddd",
+        borderRadius: 8,
+      }}
+    >
+      <input type="hidden" name="siteId" value={siteId} />
+      <label style={{ fontSize: "0.75rem", color: "#555" }}>
+        Path
+        <br />
+        <input type="text" name="path" defaultValue={filters.path} placeholder="e.g. /proj" style={fieldStyle} />
+      </label>
+      <label style={{ fontSize: "0.75rem", color: "#555" }}>
+        Referrer
+        <br />
+        <select name="referrer" defaultValue={filters.referrer ?? ""} style={fieldStyle}>
+          <option value="">All</option>
+          {summary.referrers.map((r) => (
+            <option key={r.referrer} value={r.referrer}>
+              {r.referrer}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ fontSize: "0.75rem", color: "#555" }}>
+        Country
+        <br />
+        <select name="country" defaultValue={filters.country ?? ""} style={fieldStyle}>
+          <option value="">All</option>
+          {summary.countries.map((c) => (
+            <option key={c.country} value={c.country}>
+              {c.country}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ fontSize: "0.75rem", color: "#555" }}>
+        Device
+        <br />
+        <select name="device" defaultValue={filters.device ?? ""} style={fieldStyle}>
+          <option value="">All</option>
+          {summary.devices.map((d) => (
+            <option key={d.device} value={d.device}>
+              {d.device}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="submit" style={{ ...fieldStyle, cursor: "pointer", background: "#4f46e5", color: "#fff", border: "none" }}>
+        Filter
+      </button>
+      {hasActiveFilter(filters) && (
+        <a href={`/?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", color: "#4f46e5" }}>
+          Clear
+        </a>
+      )}
+    </form>
   );
 }
 

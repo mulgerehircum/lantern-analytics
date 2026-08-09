@@ -1,4 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 const TABLE_NAME = process.env.EVENTS_TABLE_NAME ?? "lantern-events";
@@ -100,4 +101,36 @@ export async function getLiveRawEvents(siteId: string): Promise<RawEventRecord[]
 export function currentHourSK(): string {
   const [date, hourPart] = currentHourPrefix().split("T");
   return `AGG#${date}#${hourPart}`;
+}
+
+export interface RawEventRecordWithKey extends RawEventRecord {
+  SK: string; // "EVENT#2026-08-08T14:32:10Z#f8e2c1" — the hour lives in here
+}
+
+/**
+ * Every raw EVENT# item for a site, paginated. Used only by the filtered
+ * dashboard view: AGG# rollups can't be sliced by dimension, so filters must
+ * recompute from raw events (see lib/filter.ts). Coverage is bounded by the
+ * 30-day raw-event TTL — once an hour is rolled up and its raw events expire,
+ * dimension filtering for it is no longer possible.
+ */
+export async function getAllRawEvents(siteId: string): Promise<RawEventRecordWithKey[]> {
+  const items: RawEventRecordWithKey[] = [];
+  let lastKey: Record<string, AttributeValue> | undefined;
+  do {
+    const result = await client.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: {
+          ":pk": `SITE#${siteId}`,
+          ":sk": "EVENT#",
+        },
+        ExclusiveStartKey: lastKey,
+      }),
+    );
+    items.push(...((result.Items ?? []) as RawEventRecordWithKey[]));
+    lastKey = result.LastEvaluatedKey;
+  } while (lastKey);
+  return items;
 }
