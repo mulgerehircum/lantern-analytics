@@ -24,6 +24,12 @@ describe("parseFilters", () => {
     });
   });
 
+  it("parses custom-event filters", () => {
+    expect(
+      parseFilters({ eventName: " contact_click ", eventKey: "platform", eventValue: " email " }),
+    ).toEqual({ eventName: "contact_click", eventKey: "platform", eventValue: "email" });
+  });
+
   it("uses the first value when a param repeats", () => {
     expect(parseFilters({ country: ["MD", "US"] })).toEqual({ country: "MD" });
   });
@@ -41,6 +47,11 @@ describe("hasActiveFilter", () => {
   it("is true when any filter is set", () => {
     expect(hasActiveFilter({ path: "/" })).toBe(true);
     expect(hasActiveFilter({ country: "MD" })).toBe(true);
+  });
+
+  it("is true when only a custom-event filter is set", () => {
+    expect(hasActiveFilter({ eventName: "contact_click" })).toBe(true);
+    expect(hasActiveFilter({ eventKey: "platform" })).toBe(true);
   });
 });
 
@@ -78,6 +89,38 @@ describe("matchesFilter", () => {
     expect(matchesFilter(custom, { country: "MD" })).toBe(true);
     expect(matchesFilter(custom, { referrer: "google.com" })).toBe(false);
   });
+
+  it("matches event name exactly and never matches a pageview (no name)", () => {
+    const custom = event({ name: "contact_click", metadata: { platform: "email" } });
+    expect(matchesFilter(custom, { eventName: "contact_click" })).toBe(true);
+    expect(matchesFilter(custom, { eventName: "project_link_click" })).toBe(false);
+    expect(matchesFilter(event({ name: undefined }), { eventName: "contact_click" })).toBe(false);
+  });
+
+  it("matches metadata key/value exactly when both are set", () => {
+    const custom = event({ name: "contact_click", metadata: { platform: "email", priority: "high" } });
+    expect(matchesFilter(custom, { eventKey: "platform", eventValue: "email" })).toBe(true);
+    expect(matchesFilter(custom, { eventKey: "platform", eventValue: "phone" })).toBe(false);
+    expect(matchesFilter(custom, { eventKey: "priority", eventValue: "email" })).toBe(false);
+  });
+
+  it("ignores a bare eventKey with no eventValue", () => {
+    const custom = event({ name: "contact_click", metadata: { platform: "email" } });
+    expect(matchesFilter(custom, { eventKey: "platform" })).toBe(true);
+    expect(matchesFilter(event({ metadata: undefined }), { eventKey: "platform" })).toBe(true);
+  });
+
+  it("does not match a key/value filter against an event without metadata", () => {
+    expect(matchesFilter(event({ metadata: undefined }), { eventKey: "platform", eventValue: "email" })).toBe(false);
+  });
+
+  it("combines custom-event filters with other filters via AND", () => {
+    const custom = event({ path: "/contact", country: "MD", name: "contact_click", metadata: { platform: "email" } });
+    expect(matchesFilter(custom, { eventName: "contact_click", country: "MD", eventKey: "platform", eventValue: "email" })).toBe(
+      true,
+    );
+    expect(matchesFilter(custom, { eventName: "contact_click", country: "US" })).toBe(false);
+  });
 });
 
 describe("buildFilteredRollups", () => {
@@ -109,5 +152,48 @@ describe("buildFilteredRollups", () => {
 
   it("returns an empty list when nothing matches", () => {
     expect(buildFilteredRollups([event({ country: "MD" })], { country: "US" })).toEqual([]);
+  });
+
+  it("rolls up only matching custom events when filtering by event name (pageviews excluded)", () => {
+    const events = [
+      event({ SK: "EVENT#2026-08-08T11:00:00Z#a", path: "/", name: undefined }),
+      event({
+        SK: "EVENT#2026-08-08T11:10:00Z#b",
+        path: "/contact",
+        name: "contact_click",
+        metadata: { platform: "email" },
+      }),
+      event({
+        SK: "EVENT#2026-08-08T11:20:00Z#c",
+        path: "/projects/loom",
+        name: "project_link_click",
+        metadata: { project_title: "PDFloom" },
+      }),
+    ];
+    const rollups = buildFilteredRollups(events, { eventName: "contact_click" });
+    expect(rollups).toHaveLength(1);
+    expect(rollups[0].pageviews).toBe(0);
+    expect(rollups[0].customEvents).toEqual({ contact_click: 1 });
+    expect(rollups[0].eventDimensions).toEqual({ contact_click: { platform: { email: 1 } } });
+  });
+
+  it("rolls up only matching events when filtering by metadata key/value", () => {
+    const events = [
+      event({
+        SK: "EVENT#2026-08-08T11:00:00Z#a",
+        path: "/contact",
+        name: "contact_click",
+        metadata: { platform: "email" },
+      }),
+      event({
+        SK: "EVENT#2026-08-08T11:10:00Z#b",
+        path: "/contact",
+        name: "contact_click",
+        metadata: { platform: "phone" },
+      }),
+    ];
+    const rollups = buildFilteredRollups(events, { eventKey: "platform", eventValue: "phone" });
+    expect(rollups).toHaveLength(1);
+    expect(rollups[0].customEvents).toEqual({ contact_click: 1 });
   });
 });

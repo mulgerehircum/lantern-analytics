@@ -22,7 +22,16 @@ import type { DashboardFilters } from "@/lib/filter";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ siteId?: string; path?: string; referrer?: string; country?: string; device?: string }>;
+  searchParams: Promise<{
+    siteId?: string;
+    path?: string;
+    referrer?: string;
+    country?: string;
+    device?: string;
+    eventName?: string;
+    eventKey?: string;
+    eventValue?: string;
+  }>;
 }) {
   const params = await searchParams;
   const siteId = params.siteId ?? "test-site";
@@ -178,6 +187,42 @@ function FilterBar({
           {summary.devices.map((d) => (
             <option key={d.device} value={d.device}>
               {d.device}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ fontSize: "0.75rem", color: "#555" }}>
+        Event name
+        <br />
+        <select name="eventName" defaultValue={filters.eventName ?? ""} style={fieldStyle}>
+          <option value="">All</option>
+          {summary.customEvents.map((e) => (
+            <option key={e.name} value={e.name}>
+              {e.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ fontSize: "0.75rem", color: "#555" }}>
+        Event key
+        <br />
+        <select name="eventKey" defaultValue={filters.eventKey ?? ""} style={fieldStyle}>
+          <option value="">Any</option>
+          {[...new Set(summary.customEventBreakdown.map((b) => b.dimension))].map((key) => (
+            <option key={key} value={key}>
+              {key}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ fontSize: "0.75rem", color: "#555" }}>
+        Event value
+        <br />
+        <select name="eventValue" defaultValue={filters.eventValue ?? ""} style={fieldStyle}>
+          <option value="">Any</option>
+          {[...new Set(summary.customEventBreakdown.map((b) => b.value))].map((value) => (
+            <option key={value} value={value}>
+              {value}
             </option>
           ))}
         </select>

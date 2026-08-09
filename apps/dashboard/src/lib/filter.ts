@@ -2,7 +2,7 @@ import { aggregateEvents } from "./aggregate";
 import type { HourlyRollupItem, RawEventRecord } from "./dynamodb";
 
 /**
- * Dashboard dimension filters (path / referrer / country / device).
+ * Dashboard dimension filters (path / referrer / country / device / custom events).
  *
  * These CANNOT be applied to the AGG# rollups: a rollup stores per-hour
  * counts *within* each dimension (topPages, referrers, ...) but no
@@ -11,6 +11,11 @@ import type { HourlyRollupItem, RawEventRecord } from "./dynamodb";
  * events — which means it only covers the trailing ~30 days, the raw-event
  * TTL window. Documented here because that coverage limit is a real behavior,
  * not an accident.
+ *
+ * Custom-event filters (eventName / eventKey / eventValue) follow the same
+ * rule. An eventName filter only ever matches custom events (pageviews carry
+ * no `name`), so the resulting rollups have pageviews of 0 and the "Pageviews"
+ * stat / time-series chart read 0 — a documented consequence, not a bug.
  */
 
 export interface DashboardFilters {
@@ -22,6 +27,14 @@ export interface DashboardFilters {
   country?: string;
   /** Exact match ("desktop" | "mobile" | "tablet"). */
   device?: string;
+  /** Exact match on a custom event name, e.g. "contact_click". Pageviews have
+   * no `name`, so they never match — an event-name filter is a custom-events
+   * view by construction. */
+  eventName?: string;
+  /** Exact match on event.metadata[key] === value. Only applied when BOTH
+   * eventKey and eventValue are set — a bare key would be ambiguous. */
+  eventKey?: string;
+  eventValue?: string;
 }
 
 /** Raw event plus its DynamoDB key — the hour is embedded in the SK timestamp. */
@@ -44,11 +57,22 @@ export function parseFilters(
     referrer: pick("referrer"),
     country: pick("country"),
     device: pick("device"),
+    eventName: pick("eventName"),
+    eventKey: pick("eventKey"),
+    eventValue: pick("eventValue"),
   };
 }
 
 export function hasActiveFilter(filters: DashboardFilters): boolean {
-  return Boolean(filters.path || filters.referrer || filters.country || filters.device);
+  return Boolean(
+    filters.path ||
+      filters.referrer ||
+      filters.country ||
+      filters.device ||
+      filters.eventName ||
+      filters.eventKey ||
+      filters.eventValue,
+  );
 }
 
 /** AND semantics across the filters that are set; empty filters match everything. */
@@ -57,6 +81,10 @@ export function matchesFilter(event: FilterableEvent, filters: DashboardFilters)
   if (filters.referrer && (event.referrer ?? "") !== filters.referrer) return false;
   if (filters.country && event.country !== filters.country) return false;
   if (filters.device && event.device !== filters.device) return false;
+  if (filters.eventName && event.name !== filters.eventName) return false;
+  if (filters.eventKey && filters.eventValue !== undefined && event.metadata?.[filters.eventKey] !== filters.eventValue) {
+    return false;
+  }
   return true;
 }
 
