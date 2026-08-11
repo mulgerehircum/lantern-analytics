@@ -145,6 +145,20 @@ if (config) {
     // field — a site owner cannot turn this off.
     maskAllInputs: true,
     maskInputOptions: { password: true, email: true, tel: true },
+    // Standard rrweb convention (this is already its default, made explicit
+    // here so it's documented and doesn't silently change if a future rrweb
+    // version's default ever does): an element with class="rr-block" is
+    // skipped entirely — never captured in the initial snapshot, never
+    // observed for mutations. Exists specifically for elements like
+    // continuously-animating decorative backgrounds (canvas/SVG/particle
+    // effects driven by requestAnimationFrame), which can otherwise emit
+    // 50KB+ of mutation data on every single frame — real production
+    // evidence: one 8-second session generated 1800+ flush attempts and
+    // dropped ~97% of them from network overload, including the batch
+    // carrying the initial full snapshot, producing a completely blank
+    // replay. Site owners add this class to anything purely decorative;
+    // replay fidelity for actual page content is unaffected.
+    blockClass: "rr-block",
   });
 
   intervalId = setInterval(flush, FLUSH_INTERVAL_MS);
