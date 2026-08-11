@@ -7,6 +7,7 @@ import type { DashboardFilters } from "@/lib/filter";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { ProjectSelector, fieldStyle } from "@/components/ProjectSelector";
 import { HourBar } from "@/components/HourBar";
+import { HourNav } from "@/components/HourNav";
 import {
   currentMonth,
   shiftMonth,
@@ -16,6 +17,8 @@ import {
   currentDay,
   shiftDay,
   formatDayLabel,
+  isHourPeriod,
+  currentHour,
 } from "@/lib/months";
 
 /**
@@ -60,16 +63,19 @@ export default async function DashboardPage({
   // raw-event-based ~30-day window, see below), same as before this feature
   // existed. Not composed together in this pass.
   //
-  // `?month=` holds either a month ("2026-08") or a day ("2026-08-15") — a
-  // day is always inside exactly one month, so it reuses the same param
-  // rather than needing a second one; `isDayPeriod` tells them apart.
+  // `?month=` holds a month ("2026-08"), a day ("2026-08-15"), or an hour
+  // ("2026-08-15T14") — each is always inside exactly one of the coarser
+  // ones, so it reuses the same param rather than needing a third one;
+  // `isDayPeriod`/`isHourPeriod` tell them apart.
   const selectedPeriod = params.month?.trim() || undefined;
   const isDay = selectedPeriod ? isDayPeriod(selectedPeriod) : false;
+  const isHour = selectedPeriod ? isHourPeriod(selectedPeriod) : false;
 
   // Rollups + live events are always fetched: the unfiltered summary is the
   // default view AND the source of the filter dropdown options.
-  // `selectedPeriod` narrows the AGG# query to one month or one day via the
-  // existing SK prefix shape (undefined = today's unbounded all-time query).
+  // `selectedPeriod` narrows the AGG# query to one month, day, or hour via
+  // the existing SK prefix shape (undefined = today's unbounded all-time
+  // query).
   const [rollups, liveEvents] = await Promise.all([
     getHourlyRollups(siteId, selectedPeriod),
     getLiveRawEvents(siteId),
@@ -77,9 +83,10 @@ export default async function DashboardPage({
   const liveRollup = { SK: currentHourSK(), ...aggregateEvents(liveEvents) };
   // The live current-hour data only belongs in the summary when the viewed
   // range actually includes "now" — the all-time view always does, a past
-  // period never does, the current month/day does.
+  // period never does, the current month/day/hour does.
   const includesNow =
-    !selectedPeriod || (isDay ? selectedPeriod === currentDay() : selectedPeriod === currentMonth());
+    !selectedPeriod ||
+    (isHour ? selectedPeriod === currentHour() : isDay ? selectedPeriod === currentDay() : selectedPeriod === currentMonth());
   const rollupsWithLive = includesNow ? [...rollups, liveRollup] : rollups;
 
   // When a dimension filter is active, the AGG# rollups can't answer it (they
@@ -98,10 +105,13 @@ export default async function DashboardPage({
       // All-time view: trend across months — a single period already IS one
       // month/day, nothing above it to trend.
       monthlyTrend = summarizeMonthlyTrend(rollupsWithLive);
-    } else if (!isDay) {
+    } else if (!isDay && !isHour) {
       // Viewing one month: break it down into its days, each a link deeper.
       dailyTrend = summarizeDailyTrend(rollupsWithLive);
     }
+    // Viewing one day or one hour: no trend below it either — the day case
+    // already has TimeSeriesChart as its own hourly breakdown, and an hour
+    // is the finest granularity there is.
   }
   const filtered = hasActiveFilter(filters);
 
@@ -137,7 +147,11 @@ export default async function DashboardPage({
           raw-event TTL) rather than full history.
         </p>
       )}
-      {!filtered && selectedPeriod && (isDay ? <DayNav siteId={siteId} day={selectedPeriod} /> : <MonthNav siteId={siteId} month={selectedPeriod} />)}
+      {!filtered && selectedPeriod && (
+        isHour ? <HourNav siteId={siteId} hour={selectedPeriod} /> :
+        isDay ? <DayNav siteId={siteId} day={selectedPeriod} /> :
+        <MonthNav siteId={siteId} month={selectedPeriod} />
+      )}
 
       <FilterBar siteId={siteId} filters={filters} summary={summary} />
 
@@ -161,7 +175,7 @@ export default async function DashboardPage({
         </>
       )}
 
-      <TimeSeriesChart data={summary.timeSeries} />
+      {!isHour && <TimeSeriesChart siteId={siteId} data={summary.timeSeries} />}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem", marginTop: "2rem" }}>
         <Table title="Top pages" rows={summary.topPages.map((p) => [p.path, p.count] as const)} />
@@ -356,13 +370,23 @@ function CountryLabel({ code }: { code: string }) {
 }
 
 /** Dependency-free bar chart — no charting library for something this simple. */
-function TimeSeriesChart({ data }: { data: Array<{ hour: string; pageviews: number }> }) {
+function TimeSeriesChart({ siteId, data }: { siteId: string; data: Array<{ hour: string; pageviews: number }> }) {
   if (data.length === 0) return <p style={{ color: "#999" }}>No data yet</p>;
   const max = Math.max(...data.map((d) => d.pageviews), 1);
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120, borderBottom: "1px solid #ddd" }}>
       {data.map((d) => (
-        <HourBar key={d.hour} hour={d.hour} pageviews={d.pageviews} heightPct={(d.pageviews / max) * 100} />
+        <HourBar
+          key={d.hour}
+          hour={d.hour}
+          pageviews={d.pageviews}
+          heightPct={(d.pageviews / max) * 100}
+          // Every bar corresponds to exactly one real hour regardless of the
+          // current zoom level (all-time/month/day) — d.hour is already a
+          // full ISO timestamp; slice(0, 13) gives the "YYYY-MM-DDTHH" shape
+          // the `?month=` param expects for an hour (see months.ts).
+          href={`/?siteId=${encodeURIComponent(siteId)}&month=${d.hour.slice(0, 13)}`}
+        />
       ))}
     </div>
   );

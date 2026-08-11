@@ -8,6 +8,11 @@ import {
   currentDay,
   shiftDay,
   formatDayLabel,
+  isHourPeriod,
+  parentDay,
+  currentHour,
+  shiftHour,
+  formatHourLabel,
 } from "../src/lib/months";
 
 describe("currentMonth", () => {
@@ -122,5 +127,64 @@ describe("formatDayLabel", () => {
 
   it("formats January 1st correctly (index-off-by-one regression guard)", () => {
     expect(formatDayLabel("2026-01-01")).toBe("January 1, 2026");
+  });
+});
+
+describe("isHourPeriod", () => {
+  it("is true for an hour string", () => {
+    expect(isHourPeriod("2026-08-15T14")).toBe(true);
+  });
+
+  it("is false for a day string", () => {
+    expect(isHourPeriod("2026-08-15")).toBe(false);
+  });
+
+  it("is false for a month string", () => {
+    expect(isHourPeriod("2026-08")).toBe(false);
+  });
+
+  it("is false for garbage input", () => {
+    expect(isHourPeriod("not-a-date")).toBe(false);
+    expect(isHourPeriod("")).toBe(false);
+  });
+});
+
+describe("parentDay", () => {
+  it("returns the day an hour belongs to", () => {
+    expect(parentDay("2026-08-15T14")).toBe("2026-08-15");
+  });
+});
+
+describe("currentHour", () => {
+  it("formats a given date as YYYY-MM-DDTHH", () => {
+    expect(currentHour(new Date("2026-08-15T14:37:00.000Z"))).toBe("2026-08-15T14");
+  });
+});
+
+describe("shiftHour", () => {
+  it("shifts forward within the same day", () => {
+    expect(shiftHour("2026-08-15T14", 1)).toBe("2026-08-15T15");
+  });
+
+  it("shifts backward within the same day", () => {
+    expect(shiftHour("2026-08-15T14", -1)).toBe("2026-08-15T13");
+  });
+
+  it("rolls over into the next day at 23", () => {
+    expect(shiftHour("2026-08-15T23", 1)).toBe("2026-08-16T00");
+  });
+
+  it("rolls back into the previous day at 00", () => {
+    expect(shiftHour("2026-08-16T00", -1)).toBe("2026-08-15T23");
+  });
+
+  it("rolls over into the next month/year at a month boundary", () => {
+    expect(shiftHour("2026-12-31T23", 1)).toBe("2027-01-01T00");
+  });
+});
+
+describe("formatHourLabel", () => {
+  it("formats an hour string as a UTC-labeled human-readable string", () => {
+    expect(formatHourLabel("2026-08-15T14")).toBe("August 15, 2026, 14:00 UTC");
   });
 });

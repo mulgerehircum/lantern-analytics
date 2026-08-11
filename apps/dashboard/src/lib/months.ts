@@ -57,3 +57,39 @@ export function formatDayLabel(day: string): string {
   const [year, monthNum, dayNum] = day.split("-").map(Number);
   return `${MONTH_NAMES[monthNum - 1]} ${dayNum}, ${year}`;
 }
+
+/**
+ * An hour is a more specific value inside exactly one day, same reasoning as
+ * a day inside one month — it reuses the same `?month=` slot rather than a
+ * third param. True for "YYYY-MM-DDTHH" (an hour), false otherwise.
+ */
+export function isHourPeriod(period: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}$/.test(period);
+}
+
+/** parentDay("2026-08-15T14") === "2026-08-15" */
+export function parentDay(hour: string): string {
+  return hour.slice(0, 10);
+}
+
+export function currentHour(now: Date = new Date()): string {
+  return now.toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
+}
+
+/** shiftHour("2026-08-15T23", 1) === "2026-08-16T00" — real UTC hour math, including day/month/year rollover. */
+export function shiftHour(hour: string, delta: number): string {
+  const d = new Date(`${hour}:00:00.000Z`);
+  d.setUTCHours(d.getUTCHours() + delta);
+  return d.toISOString().slice(0, 13);
+}
+
+/**
+ * UTC-labeled fallback text, e.g. for SSR before a client component swaps in
+ * the viewer's own local time (see HourNav/HourBar) — deliberately says
+ * "UTC" so it's never mistaken for local time if JS is slow to hydrate.
+ * formatHourLabel("2026-08-15T14") === "August 15, 2026, 14:00 UTC"
+ */
+export function formatHourLabel(hour: string): string {
+  const [day, hourNum] = hour.split("T");
+  return `${formatDayLabel(day)}, ${hourNum}:00 UTC`;
+}

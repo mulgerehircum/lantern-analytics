@@ -44,13 +44,16 @@ export interface HourlyRollupItem {
  * One `PK + SK begins_with` query, never a Scan — see
  * packages/ingestion/docs/dynamodb-schema.md for why that matters.
  *
- * `monthPrefix` ("YYYY-MM") narrows the query to one month, e.g.
- * `begins_with(SK, "AGG#2026-08")` — cheap and exact against the existing
- * `AGG#<date>#<hour>` SK shape, no new item type needed. Omit it for the
- * unbounded all-time query (today's default behavior).
+ * `monthPrefix` narrows the query to one month ("YYYY-MM"), one day
+ * ("YYYY-MM-DD"), or one exact hour ("YYYY-MM-DDTHH") — all the same
+ * `begins_with(SK, "AGG#...")` shape against the existing `AGG#<date>#<hour>`
+ * SK, no new item type needed. The `T`→`#` swap only ever fires for the hour
+ * case (month/day strings never contain "T") — it exists purely because the
+ * URL param spells an hour with "T" for readability while the stored SK
+ * spells it with "#". Omit `monthPrefix` for the unbounded all-time query.
  */
 export async function getHourlyRollups(siteId: string, monthPrefix?: string): Promise<HourlyRollupItem[]> {
-  const skPrefix = monthPrefix ? `AGG#${monthPrefix}` : "AGG#";
+  const skPrefix = monthPrefix ? `AGG#${monthPrefix.replace("T", "#")}` : "AGG#";
   const result = await client.send(
     new QueryCommand({
       TableName: TABLE_NAME,
