@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { currentMonth, shiftMonth, formatMonthLabel } from "../src/lib/months";
+import {
+  currentMonth,
+  shiftMonth,
+  formatMonthLabel,
+  isDayPeriod,
+  parentMonth,
+  currentDay,
+  shiftDay,
+  formatDayLabel,
+} from "../src/lib/months";
 
 describe("currentMonth", () => {
   it("formats a given date as YYYY-MM", () => {
@@ -49,5 +58,69 @@ describe("formatMonthLabel", () => {
 
   it("formats December correctly", () => {
     expect(formatMonthLabel("2026-12")).toBe("December 2026");
+  });
+});
+
+describe("isDayPeriod", () => {
+  it("is true for a YYYY-MM-DD string", () => {
+    expect(isDayPeriod("2026-08-15")).toBe(true);
+  });
+
+  it("is false for a YYYY-MM string", () => {
+    expect(isDayPeriod("2026-08")).toBe(false);
+  });
+
+  it("is false for garbage input", () => {
+    expect(isDayPeriod("not-a-date")).toBe(false);
+    expect(isDayPeriod("")).toBe(false);
+  });
+});
+
+describe("parentMonth", () => {
+  it("extracts the month from a day string", () => {
+    expect(parentMonth("2026-08-15")).toBe("2026-08");
+  });
+});
+
+describe("currentDay", () => {
+  it("formats a given date as YYYY-MM-DD", () => {
+    expect(currentDay(new Date("2026-08-15T23:59:59.000Z"))).toBe("2026-08-15");
+  });
+});
+
+describe("shiftDay", () => {
+  it("moves forward within a month", () => {
+    expect(shiftDay("2026-08-15", 1)).toBe("2026-08-16");
+  });
+
+  it("moves backward within a month", () => {
+    expect(shiftDay("2026-08-15", -1)).toBe("2026-08-14");
+  });
+
+  it("rolls over into the next month", () => {
+    expect(shiftDay("2026-08-31", 1)).toBe("2026-09-01");
+  });
+
+  it("rolls back into the previous month", () => {
+    expect(shiftDay("2026-09-01", -1)).toBe("2026-08-31");
+  });
+
+  it("rolls over a year boundary", () => {
+    expect(shiftDay("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("handles leap-year February correctly", () => {
+    expect(shiftDay("2028-02-28", 1)).toBe("2028-02-29"); // 2028 is a leap year
+    expect(shiftDay("2028-02-29", 1)).toBe("2028-03-01");
+  });
+});
+
+describe("formatDayLabel", () => {
+  it("formats a day string as a human-readable label", () => {
+    expect(formatDayLabel("2026-08-15")).toBe("August 15, 2026");
+  });
+
+  it("formats January 1st correctly (index-off-by-one regression guard)", () => {
+    expect(formatDayLabel("2026-01-01")).toBe("January 1, 2026");
   });
 });

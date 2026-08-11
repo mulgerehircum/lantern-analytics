@@ -123,25 +123,42 @@ export interface MonthlyTrendPoint {
   uniques: number;
 }
 
-/**
- * Groups hourly rollups by the "YYYY-MM" slice of their SK (e.g.
- * "AGG#2026-08-15#14" -> "2026-08") and sums pageviews/uniques per month.
- * Same cross-hour-uniques approximation caveat as summarizeRollups above —
- * this is a sum of already-approximate per-hour unique counts, not a true
- * distinct count across the month.
- */
-export function summarizeMonthlyTrend(rollups: HourlyRollupItem[]): MonthlyTrendPoint[] {
-  const byMonth = new Map<string, { pageviews: number; uniques: number }>();
+export interface DailyTrendPoint {
+  day: string; // "YYYY-MM-DD"
+  pageviews: number;
+  uniques: number;
+}
 
+/**
+ * Shared grouping logic for both trend functions below: slices each rollup's
+ * SK (e.g. "AGG#2026-08-15#14") down to `sliceLength` characters after the
+ * "AGG#" prefix — 7 for a month ("2026-08"), 10 for a day ("2026-08-15") —
+ * and sums pageviews/uniques per group. Same cross-hour-uniques
+ * approximation caveat as summarizeRollups above — this sums already-
+ * approximate per-hour unique counts, not a true distinct count.
+ */
+function groupBySkPrefix(rollups: HourlyRollupItem[], sliceLength: number): Map<string, { pageviews: number; uniques: number }> {
+  const grouped = new Map<string, { pageviews: number; uniques: number }>();
   for (const rollup of rollups) {
-    const month = rollup.SK.replace("AGG#", "").slice(0, 7);
-    const entry = byMonth.get(month) ?? { pageviews: 0, uniques: 0 };
+    const key = rollup.SK.replace("AGG#", "").slice(0, sliceLength);
+    const entry = grouped.get(key) ?? { pageviews: 0, uniques: 0 };
     entry.pageviews += rollup.pageviews;
     entry.uniques += rollup.uniques;
-    byMonth.set(month, entry);
+    grouped.set(key, entry);
   }
+  return grouped;
+}
 
-  return [...byMonth.entries()]
+/** Groups hourly rollups by month and sums pageviews/uniques per month. */
+export function summarizeMonthlyTrend(rollups: HourlyRollupItem[]): MonthlyTrendPoint[] {
+  return [...groupBySkPrefix(rollups, 7).entries()]
     .map(([month, totals]) => ({ month, ...totals }))
     .sort((a, b) => a.month.localeCompare(b.month));
+}
+
+/** Groups hourly rollups by day and sums pageviews/uniques per day. */
+export function summarizeDailyTrend(rollups: HourlyRollupItem[]): DailyTrendPoint[] {
+  return [...groupBySkPrefix(rollups, 10).entries()]
+    .map(([day, totals]) => ({ day, ...totals }))
+    .sort((a, b) => a.day.localeCompare(b.day));
 }

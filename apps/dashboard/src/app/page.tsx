@@ -1,12 +1,21 @@
 import { aggregateEvents } from "@/lib/aggregate";
 import { getHourlyRollups, getLiveRawEvents, getAllRawEvents, currentHourSK } from "@/lib/dynamodb";
-import { summarizeRollups, summarizeMonthlyTrend } from "@/lib/summarize";
-import type { DashboardSummary, MonthlyTrendPoint } from "@/lib/summarize";
+import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend } from "@/lib/summarize";
+import type { DashboardSummary, MonthlyTrendPoint, DailyTrendPoint } from "@/lib/summarize";
 import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filter";
 import type { DashboardFilters } from "@/lib/filter";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { ProjectSelector, fieldStyle } from "@/components/ProjectSelector";
-import { currentMonth, shiftMonth, formatMonthLabel } from "@/lib/months";
+import {
+  currentMonth,
+  shiftMonth,
+  formatMonthLabel,
+  isDayPeriod,
+  parentMonth,
+  currentDay,
+  shiftDay,
+  formatDayLabel,
+} from "@/lib/months";
 
 /**
  * Server Component — fetches DynamoDB directly, server-side. No client-side
@@ -49,21 +58,27 @@ export default async function DashboardPage({
   // if a dimension filter is active it takes over entirely (its own
   // raw-event-based ~30-day window, see below), same as before this feature
   // existed. Not composed together in this pass.
-  const selectedMonth = params.month?.trim() || undefined;
+  //
+  // `?month=` holds either a month ("2026-08") or a day ("2026-08-15") — a
+  // day is always inside exactly one month, so it reuses the same param
+  // rather than needing a second one; `isDayPeriod` tells them apart.
+  const selectedPeriod = params.month?.trim() || undefined;
+  const isDay = selectedPeriod ? isDayPeriod(selectedPeriod) : false;
 
   // Rollups + live events are always fetched: the unfiltered summary is the
-  // default view AND the source of the filter dropdown options. `selectedMonth`
-  // narrows the AGG# query to one month via the existing SK prefix shape
-  // (undefined = today's unbounded all-time query).
+  // default view AND the source of the filter dropdown options.
+  // `selectedPeriod` narrows the AGG# query to one month or one day via the
+  // existing SK prefix shape (undefined = today's unbounded all-time query).
   const [rollups, liveEvents] = await Promise.all([
-    getHourlyRollups(siteId, selectedMonth),
+    getHourlyRollups(siteId, selectedPeriod),
     getLiveRawEvents(siteId),
   ]);
   const liveRollup = { SK: currentHourSK(), ...aggregateEvents(liveEvents) };
   // The live current-hour data only belongs in the summary when the viewed
   // range actually includes "now" — the all-time view always does, a past
-  // month never does, the current month does.
-  const includesNow = !selectedMonth || selectedMonth === currentMonth();
+  // period never does, the current month/day does.
+  const includesNow =
+    !selectedPeriod || (isDay ? selectedPeriod === currentDay() : selectedPeriod === currentMonth());
   const rollupsWithLive = includesNow ? [...rollups, liveRollup] : rollups;
 
   // When a dimension filter is active, the AGG# rollups can't answer it (they
@@ -72,14 +87,20 @@ export default async function DashboardPage({
   // only the trailing ~30 days.
   let summary: DashboardSummary;
   let monthlyTrend: MonthlyTrendPoint[] | null = null;
+  let dailyTrend: DailyTrendPoint[] | null = null;
   if (hasActiveFilter(filters)) {
     const rawEvents = await getAllRawEvents(siteId);
     summary = summarizeRollups(buildFilteredRollups(rawEvents, filters));
   } else {
     summary = summarizeRollups(rollupsWithLive);
-    // Only the all-time view shows the trend-across-months chart — a
-    // single-month drill-down already IS one month, nothing to trend.
-    if (!selectedMonth) monthlyTrend = summarizeMonthlyTrend(rollupsWithLive);
+    if (!selectedPeriod) {
+      // All-time view: trend across months — a single period already IS one
+      // month/day, nothing above it to trend.
+      monthlyTrend = summarizeMonthlyTrend(rollupsWithLive);
+    } else if (!isDay) {
+      // Viewing one month: break it down into its days, each a link deeper.
+      dailyTrend = summarizeDailyTrend(rollupsWithLive);
+    }
   }
   const filtered = hasActiveFilter(filters);
 
@@ -115,7 +136,7 @@ export default async function DashboardPage({
           raw-event TTL) rather than full history.
         </p>
       )}
-      {!filtered && selectedMonth && <MonthNav siteId={siteId} month={selectedMonth} />}
+      {!filtered && selectedPeriod && (isDay ? <DayNav siteId={siteId} day={selectedPeriod} /> : <MonthNav siteId={siteId} month={selectedPeriod} />)}
 
       <FilterBar siteId={siteId} filters={filters} summary={summary} />
 
@@ -128,6 +149,14 @@ export default async function DashboardPage({
         <>
           <p style={{ fontSize: "0.75rem", color: "#555", margin: "0 0 0.25rem" }}>Monthly trend</p>
           <MonthlyTrendChart siteId={siteId} data={monthlyTrend} />
+        </>
+      )}
+      {dailyTrend && (
+        <>
+          <p style={{ fontSize: "0.75rem", color: "#555", margin: "0 0 0.25rem" }}>
+            Days in {formatMonthLabel(selectedPeriod!)}
+          </p>
+          <DailyTrendChart siteId={siteId} data={dailyTrend} />
         </>
       )}
 
@@ -394,6 +423,62 @@ function MonthNav({ siteId, month }: { siteId: string; month: string }) {
       </a>
       <a href={`/?siteId=${encodeURIComponent(siteId)}`} style={{ color: "#666" }}>
         (all time)
+      </a>
+    </p>
+  );
+}
+
+/**
+ * One bar per day within the currently-viewed month, each a plain link into
+ * that day's drill-down view — same no-client-JS pattern as MonthlyTrendChart.
+ */
+function DailyTrendChart({ siteId, data }: { siteId: string; data: DailyTrendPoint[] }) {
+  if (data.length === 0) return <p style={{ color: "#999" }}>No data yet</p>;
+  const max = Math.max(...data.map((d) => d.pageviews), 1);
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120, borderBottom: "1px solid #ddd", marginBottom: "0.5rem" }}>
+      {data.map((d) => (
+        <a
+          key={d.day}
+          href={`/?siteId=${encodeURIComponent(siteId)}&month=${encodeURIComponent(d.day)}`}
+          title={`${formatDayLabel(d.day)}: ${d.pageviews} pageviews`}
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, textDecoration: "none" }}
+        >
+          <div
+            style={{
+              width: 12,
+              height: `${(d.pageviews / max) * 100}%`,
+              minHeight: d.pageviews > 0 ? 2 : 0,
+              background: "#4f46e5",
+              borderRadius: "2px 2px 0 0",
+            }}
+          />
+          <span style={{ fontSize: "0.6rem", color: "#666", marginTop: 4 }}>{d.day.slice(8)}</span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Prev/next day navigation for the single-day drill-down view. Day is a
+ * child of month (see the `?month=` param comment above), so "up" goes to
+ * the day's own month rather than all time.
+ */
+function DayNav({ siteId, day }: { siteId: string; day: string }) {
+  const prev = shiftDay(day, -1);
+  const next = shiftDay(day, 1);
+  return (
+    <p style={{ fontSize: "0.85rem", margin: "0.25rem 0 0", display: "flex", gap: "0.75rem", alignItems: "center" }}>
+      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={{ color: "#4f46e5" }}>
+        ← {formatDayLabel(prev)}
+      </a>
+      <strong>{formatDayLabel(day)}</strong>
+      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={{ color: "#4f46e5" }}>
+        {formatDayLabel(next)} →
+      </a>
+      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${parentMonth(day)}`} style={{ color: "#666" }}>
+        (up to {formatMonthLabel(parentMonth(day))})
       </a>
     </p>
   );
