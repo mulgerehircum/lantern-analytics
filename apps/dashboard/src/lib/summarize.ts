@@ -116,3 +116,32 @@ export function summarizeRollups(rollups: HourlyRollupItem[]): DashboardSummary 
     customEventBreakdown,
   };
 }
+
+export interface MonthlyTrendPoint {
+  month: string; // "YYYY-MM"
+  pageviews: number;
+  uniques: number;
+}
+
+/**
+ * Groups hourly rollups by the "YYYY-MM" slice of their SK (e.g.
+ * "AGG#2026-08-15#14" -> "2026-08") and sums pageviews/uniques per month.
+ * Same cross-hour-uniques approximation caveat as summarizeRollups above —
+ * this is a sum of already-approximate per-hour unique counts, not a true
+ * distinct count across the month.
+ */
+export function summarizeMonthlyTrend(rollups: HourlyRollupItem[]): MonthlyTrendPoint[] {
+  const byMonth = new Map<string, { pageviews: number; uniques: number }>();
+
+  for (const rollup of rollups) {
+    const month = rollup.SK.replace("AGG#", "").slice(0, 7);
+    const entry = byMonth.get(month) ?? { pageviews: 0, uniques: 0 };
+    entry.pageviews += rollup.pageviews;
+    entry.uniques += rollup.uniques;
+    byMonth.set(month, entry);
+  }
+
+  return [...byMonth.entries()]
+    .map(([month, totals]) => ({ month, ...totals }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+}

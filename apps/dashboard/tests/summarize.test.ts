@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { summarizeRollups } from "../src/lib/summarize";
+import { summarizeRollups, summarizeMonthlyTrend } from "../src/lib/summarize";
 import type { HourlyRollupItem } from "../src/lib/dynamodb";
 
 function rollup(overrides: Partial<HourlyRollupItem> = {}): HourlyRollupItem {
@@ -95,5 +95,39 @@ describe("summarizeRollups", () => {
     ]);
     expect(result.customEvents).toEqual([{ name: "click", count: 2 }]);
     expect(result.customEventBreakdown).toEqual([]);
+  });
+});
+
+describe("summarizeMonthlyTrend", () => {
+  it("returns an empty array for no rollups", () => {
+    expect(summarizeMonthlyTrend([])).toEqual([]);
+  });
+
+  it("sums pageviews and uniques across hours within the same month", () => {
+    const result = summarizeMonthlyTrend([
+      rollup({ SK: "AGG#2026-08-08#11", pageviews: 5, uniques: 3 }),
+      rollup({ SK: "AGG#2026-08-15#14", pageviews: 2, uniques: 1 }),
+    ]);
+    expect(result).toEqual([{ month: "2026-08", pageviews: 7, uniques: 4 }]);
+  });
+
+  it("keeps different months separate", () => {
+    const result = summarizeMonthlyTrend([
+      rollup({ SK: "AGG#2026-07-31#23", pageviews: 10, uniques: 8 }),
+      rollup({ SK: "AGG#2026-08-01#00", pageviews: 4, uniques: 2 }),
+    ]);
+    expect(result).toEqual([
+      { month: "2026-07", pageviews: 10, uniques: 8 },
+      { month: "2026-08", pageviews: 4, uniques: 2 },
+    ]);
+  });
+
+  it("sorts ascending by month regardless of input order", () => {
+    const result = summarizeMonthlyTrend([
+      rollup({ SK: "AGG#2026-09-01#00", pageviews: 1, uniques: 1 }),
+      rollup({ SK: "AGG#2026-07-01#00", pageviews: 1, uniques: 1 }),
+      rollup({ SK: "AGG#2026-08-01#00", pageviews: 1, uniques: 1 }),
+    ]);
+    expect(result.map((r) => r.month)).toEqual(["2026-07", "2026-08", "2026-09"]);
   });
 });

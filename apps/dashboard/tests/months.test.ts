@@ -1,0 +1,53 @@
+import { describe, it, expect } from "vitest";
+import { currentMonth, shiftMonth, formatMonthLabel } from "../src/lib/months";
+
+describe("currentMonth", () => {
+  it("formats a given date as YYYY-MM", () => {
+    expect(currentMonth(new Date("2026-08-15T12:00:00.000Z"))).toBe("2026-08");
+  });
+
+  it("pads single-digit months", () => {
+    expect(currentMonth(new Date("2026-03-01T00:00:00.000Z"))).toBe("2026-03");
+  });
+});
+
+describe("shiftMonth", () => {
+  it("moves forward within a year", () => {
+    expect(shiftMonth("2026-08", 1)).toBe("2026-09");
+  });
+
+  it("moves backward within a year", () => {
+    expect(shiftMonth("2026-08", -1)).toBe("2026-07");
+  });
+
+  it("rolls over into the next year", () => {
+    expect(shiftMonth("2026-12", 1)).toBe("2027-01");
+  });
+
+  it("rolls back into the previous year", () => {
+    expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+  });
+
+  it("handles multi-month shifts spanning a year boundary", () => {
+    expect(shiftMonth("2026-11", 3)).toBe("2027-02");
+    expect(shiftMonth("2026-02", -3)).toBe("2025-11");
+  });
+
+  it("handles a zero shift as a no-op", () => {
+    expect(shiftMonth("2026-08", 0)).toBe("2026-08");
+  });
+});
+
+describe("formatMonthLabel", () => {
+  it("formats a month string as a human-readable label", () => {
+    expect(formatMonthLabel("2026-08")).toBe("August 2026");
+  });
+
+  it("formats January correctly (index-off-by-one regression guard)", () => {
+    expect(formatMonthLabel("2026-01")).toBe("January 2026");
+  });
+
+  it("formats December correctly", () => {
+    expect(formatMonthLabel("2026-12")).toBe("December 2026");
+  });
+});

@@ -11,6 +11,7 @@ import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 import * as path from "node:path";
 import { EXCLUDED_IPS } from "./excluded-ips";
+import { SITE_IDS } from "./site-ids";
 
 /**
  * Free-tier-pinned by design. PROVISIONED billing at exactly 25 RCU/25 WCU is
@@ -92,9 +93,10 @@ export class LanternStack extends Stack {
       code: lambda.Code.fromAsset(LAMBDA_DIST_DIR),
       environment: {
         EVENTS_TABLE_NAME: table.tableName,
-        // Empty until real sites exist — see rollup-handler.ts's doc comment
-        // on why this env-var-as-registry is a Phase 1 simplification.
-        SITE_IDS: "",
+        // Committed registry (site-ids.ts) — see rollup-handler.ts's doc
+        // comment on why this env-var-as-registry is a Phase 1
+        // simplification rather than a real DynamoDB-backed site table.
+        SITE_IDS: SITE_IDS.join(","),
       },
       memorySize: 128,
       timeout: Duration.seconds(30),
