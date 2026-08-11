@@ -74,9 +74,31 @@ Rollups written before custom events existed simply lack the last two fields;
 the dashboard treats them as absent.
 No TTL on rollups — these are the permanent record; raw events are disposable once rolled up.
 
+### Item: session recording metadata (Phase 2 — written by the metadata-ingest Lambda, `session-meta-handler.ts`)
+```
+PK: SITE#abc123
+SK: SESSION#2026-08-08T14:30:00.000Z#a1b2c3d4e5f6
+{
+  sessionId: "a1b2c3d4e5f6",
+  startedAt: "2026-08-08T14:30:00.000Z",
+  durationMs: 184000,
+  pageCount: 4,
+  storageRef: "abc123/a1b2c3d4e5f6"   // points at the blob on the Mac-mini receiver, never the blob itself
+}
+```
+The actual rrweb event stream never lands in this table — it's an opaque blob
+on the self-hosted receiver (`packages/recorder-receiver`), addressed by
+`storageRef`. `storageRef` is always computed server-side as
+`${siteId}/${sessionId}` (`session-meta-validate.ts`); a client-supplied
+`storageRef` in the request body is ignored. Repeated heartbeats for the same
+session (the tracker sends one roughly every 3rd flush) simply overwrite this
+item — same PK+SK, no atomic counters needed since `durationMs`/`pageCount`
+just increase monotonically. No TTL, same reasoning as `AGG#` rollups.
+
 ## Query patterns this supports
 - Dashboard "traffic over time" → query `PK = SITE#x, SK begins_with AGG#<date>` (cheap, no scan)
 - Rollup job → query `PK = SITE#x, SK begins_with EVENT#<hour-range>` for events since the last rollup, aggregate in-process, write one `AGG#` item, let TTL clean up the raw events
+- Dashboard "sessions list" (Phase 2) → query `PK = SITE#x, SK begins_with SESSION#`, `ScanIndexForward: false` for newest-first (free from the ISO-8601 timestamp in the SK)
 - No GSI needed yet — everything is scoped to a single site's partition. Would add one only if cross-site queries (e.g., "all sites owned by user Y") become a real requirement later.
 
 ## Open question (not decided yet)

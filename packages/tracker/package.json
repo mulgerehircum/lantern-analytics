@@ -2,18 +2,20 @@
   "name": "@lantern/tracker",
   "version": "0.0.0",
   "private": true,
-  "description": "Client-side tracking script: cookieless pageview beacon (Phase 1); rrweb session capture (Phase 2, not built yet)",
+  "description": "Client-side tracking script: cookieless pageview beacon (Phase 1); rrweb session capture (Phase 2)",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --minify --format=iife --outfile=dist/tracker.js",
+    "build": "esbuild src/index.ts --bundle --minify --format=iife --outfile=dist/tracker.js && esbuild src/recorder-entry.ts --bundle --minify --format=iife --outfile=dist/tracker-recorder.js && npm run size-check",
     "build:release": "npm run build && npm run sync:dashboard",
-    "sync:dashboard": "node -e \"require('fs').copyFileSync('dist/tracker.js', '../../apps/dashboard/public/tracker.js')\"",
+    "sync:dashboard": "node -e \"require('fs').copyFileSync('dist/tracker.js', '../../apps/dashboard/public/tracker.js');require('fs').copyFileSync('dist/tracker-recorder.js', '../../apps/dashboard/public/tracker-recorder.js')\"",
+    "size-check": "node -e \"const{gzipSync}=require('zlib');const{readFileSync}=require('fs');const size=gzipSync(readFileSync('dist/tracker.js')).length;const budget=2048;if(size>budget){console.error('dist/tracker.js gzip size '+size+'B exceeds the '+budget+'B Phase 1 budget (rrweb must never leak into this bundle, see docs/design.md)');process.exit(1)}console.log('dist/tracker.js gzip size: '+size+'B (budget '+budget+'B)')\"",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@lantern/shared": "*"
+    "@lantern/shared": "*",
+    "rrweb": "^2.0.0-alpha.4"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

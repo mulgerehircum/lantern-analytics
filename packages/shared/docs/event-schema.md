@@ -39,7 +39,7 @@ interface EnrichedPageviewEvent extends Omit<PageviewEvent, "visitorHash"> {
 This is the shape written into DynamoDB as a raw `EVENT#` item (see
 `packages/ingestion/docs/dynamodb-schema.md`).
 
-## Session recording metadata (Phase 2 — not built yet)
+## Session recording metadata (Phase 2)
 
 ```ts
 interface SessionRecordingMeta {
@@ -55,6 +55,16 @@ interface SessionRecordingMeta {
 The actual rrweb event stream is never modeled here — it's an opaque blob handed to
 storage as-is. Only metadata needs a shared type, since that's the only part
 DynamoDB and the dashboard touch directly.
+
+`storageRef` is always computed server-side as `${siteId}/${sessionId}` by the
+metadata-ingest Lambda (see `packages/ingestion/docs/dynamodb-schema.md`) — a
+client-supplied `storageRef` in the ingest request body is ignored, never trusted.
+This closes off a class of injection where a crafted payload could otherwise plant
+an arbitrary path string that the dashboard later uses to request a blob from the
+Mac-mini receiver. `sessionId`/`siteId` themselves are validated against
+`SESSION_ID_PATTERN`/`SITE_ID_PATTERN` in `packages/shared/src/recording-limits.ts`
+before this computation happens, since the receiver also uses them directly in a
+filesystem path.
 
 ## What's deliberately NOT in this schema yet
 - Anything AI/query-layer related (Phase 3) — don't design that contract until Phase 1

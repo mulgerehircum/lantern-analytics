@@ -3,6 +3,20 @@ export interface TrackerConfig {
   endpoint: string;
   /** True when the script tag carries `data-spa`: fire a pageview per client-side route change. */
   spa: boolean;
+  /** This script's own resolved `src` — used to derive the lazy recording chunk's URL. */
+  scriptSrc: string;
+  /**
+   * True only when `data-record` is present AND both `data-record-endpoint`/
+   * `data-record-token` are set. A misconfigured recording opt-in must never
+   * break the base pageview beacon, so this fails closed rather than
+   * throwing or half-enabling recording — see recording.ts.
+   */
+  recordEnabled: boolean;
+  recordEndpoint?: string;
+  recordToken?: string;
+  /** `data-record-script` — explicit override for the lazy chunk's URL, for
+   * sites that host tracker.js and tracker-recorder.js at different paths. */
+  recordScript?: string;
 }
 
 /**
@@ -19,5 +33,17 @@ export function readConfig(): TrackerConfig | null {
   const endpoint = script.dataset.endpoint;
   if (!siteId || !endpoint) return null;
 
-  return { siteId, endpoint, spa: script.dataset.spa !== undefined };
+  const recordEndpoint = script.dataset.recordEndpoint;
+  const recordToken = script.dataset.recordToken;
+
+  return {
+    siteId,
+    endpoint,
+    spa: script.dataset.spa !== undefined,
+    scriptSrc: script.src,
+    recordEnabled: script.dataset.record !== undefined && !!recordEndpoint && !!recordToken,
+    recordEndpoint,
+    recordToken,
+    recordScript: script.dataset.recordScript,
+  };
 }

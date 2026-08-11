@@ -4,5 +4,13 @@
   "private": true,
   "type": "module",
   "description": "Event schema/types shared across tracker, ingestion, and dashboard",
-  "main": "src/index.ts"
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
 }

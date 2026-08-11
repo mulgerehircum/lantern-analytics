@@ -6,6 +6,7 @@ import { isDoNotTrackEnabled } from "./dnt";
 import { isIgnored, setIgnored } from "./ignore";
 import { buildCustomEvent } from "./track";
 import { enableSpaTracking } from "./spa";
+import { enableSessionRecording, getOrCreateSession, getPageCount, notifyPageview } from "./recording";
 
 declare global {
   interface Window {
@@ -60,11 +61,29 @@ window.lantern = { track, ignore: setIgnored };
 // the full reasoning behind what this deliberately does NOT do.
 if (!isDoNotTrackEnabled() && !isIgnored()) {
   trackPageview();
+  notifyPageview(sessionStorage);
 }
 
 // Opt-in SPA route tracking (`data-spa` on the script tag): fires a pageview
 // per client-side navigation, deduped by pathname. DNT/ignore are re-checked
 // per navigation, matching window.lantern.track.
 if (config?.spa) {
-  enableSpaTracking(window, trackPageview, () => !isDoNotTrackEnabled() && !isIgnored());
+  enableSpaTracking(
+    window,
+    (path) => {
+      trackPageview(path);
+      notifyPageview(sessionStorage);
+    },
+    () => !isDoNotTrackEnabled() && !isIgnored(),
+  );
+}
+
+// Opt-in session recording (`data-record` + `data-record-endpoint` +
+// `data-record-token` on the script tag). Same DNT/ignore standard as
+// pageviews/custom events — no separate or weaker gate. See recording.ts for
+// why this loads a completely separate script rather than importing rrweb
+// here.
+if (config?.recordEnabled && !isDoNotTrackEnabled() && !isIgnored()) {
+  const session = getOrCreateSession(sessionStorage, crypto);
+  enableSessionRecording(config, session, getPageCount(sessionStorage));
 }

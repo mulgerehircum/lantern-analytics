@@ -1,6 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
-import type { EnrichedCustomEvent, EnrichedPageviewEvent } from "@lantern/shared";
+import type { EnrichedCustomEvent, EnrichedPageviewEvent, SessionRecordingMeta } from "@lantern/shared";
 
 const TABLE_NAME = process.env.EVENTS_TABLE_NAME ?? "lantern-events";
 const RAW_EVENT_TTL_DAYS = 30;
@@ -43,6 +43,30 @@ export async function putRawEvent(event: EnrichedPageviewEvent | EnrichedCustomE
     new PutCommand({
       TableName: TABLE_NAME,
       Item: item,
+    }),
+  );
+}
+
+/**
+ * Writes/overwrites one SESSION# item — repeated metadata heartbeats during a
+ * long session are simple overwrites of the same PK+SK (fixed `startedAt` in
+ * the SK), not atomic counter updates, matching the project's existing
+ * simple-write style. No TTL: this is the permanent record, like AGG#
+ * rollups, not a disposable raw event. See docs/dynamodb-schema.md.
+ */
+export async function putSessionRecordingMeta(meta: SessionRecordingMeta): Promise<void> {
+  await client.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: `SITE#${meta.siteId}`,
+        SK: `SESSION#${meta.startedAt}#${meta.sessionId}`,
+        sessionId: meta.sessionId,
+        startedAt: meta.startedAt,
+        durationMs: meta.durationMs,
+        pageCount: meta.pageCount,
+        storageRef: meta.storageRef,
+      },
     }),
   );
 }

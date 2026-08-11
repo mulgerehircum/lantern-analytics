@@ -1,0 +1,25 @@
+{
+  "name": "@lantern/recorder-receiver",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted receiver for rrweb session-recording blobs, reached via Cloudflare Tunnel. The one Phase 2 piece with no AWS/Vercel deploy story — built to run manually on owned hardware. See README.md for the tunnel + launchd runbook.",
+  "main": "src/server.ts",
+  "scripts": {
+    "build": "esbuild src/server.ts --bundle --platform=node --format=cjs --target=node20 --outfile=dist/server.cjs",
+    "start": "node dist/server.cjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lantern/shared": "*",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.7.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

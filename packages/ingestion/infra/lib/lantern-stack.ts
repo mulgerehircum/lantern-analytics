@@ -22,10 +22,17 @@ import { EXCLUDED_IPS } from "./excluded-ips";
  */
 const FREE_TIER_CAPACITY = 25;
 
-// Both Lambdas ship as pre-built JS from the package's own esbuild step
+// All Lambdas ship as pre-built JS from the package's own esbuild step
 // (see package.json's `build` script) — infra never re-bundles application
 // code, it only wires together what already exists in dist/.
 const LAMBDA_DIST_DIR = path.join(__dirname, "../../dist");
+
+// Committed exclusions (excluded-ips.ts) merged with any deployment-time
+// override — e.g. `$env:EXCLUDED_IPS = "1.2.3.4"` before `cdk deploy`. Shared
+// by every ingest-path Lambda that needs the same self-exclusion.
+function excludedIpsEnv(): string {
+  return [...EXCLUDED_IPS, ...(process.env.EXCLUDED_IPS ?? "").split(/[\s,]+/).filter(Boolean)].join(",");
+}
 
 export class LanternStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -50,9 +57,7 @@ export class LanternStack extends Stack {
       code: lambda.Code.fromAsset(LAMBDA_DIST_DIR),
       environment: {
         EVENTS_TABLE_NAME: table.tableName,
-        // Committed exclusions (excluded-ips.ts) merged with any deployment-time
-        // override — e.g. `$env:EXCLUDED_IPS = "1.2.3.4"` before `cdk deploy`.
-        EXCLUDED_IPS: [...EXCLUDED_IPS, ...(process.env.EXCLUDED_IPS ?? "").split(/[\s,]+/).filter(Boolean)].join(","),
+        EXCLUDED_IPS: excludedIpsEnv(),
       },
       memorySize: 128,
       timeout: Duration.seconds(5),
@@ -61,6 +66,25 @@ export class LanternStack extends Stack {
       logRetention: logs.RetentionDays.TWO_WEEKS,
     });
     table.grantWriteData(ingestionFn);
+
+    // Phase 2 — session-recording metadata heartbeat. Structurally identical
+    // to ingestionFn (see session-meta-handler.ts): same table, same
+    // self-exclusion env var, same free-tier-friendly sizing. The actual
+    // recording blobs never touch this Lambda/table — they go straight from
+    // the browser to the Mac-mini receiver (packages/recorder-receiver).
+    const sessionMetaFn = new lambda.Function(this, "SessionMetaFunction", {
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: "session-meta-handler.handler",
+      code: lambda.Code.fromAsset(LAMBDA_DIST_DIR),
+      environment: {
+        EVENTS_TABLE_NAME: table.tableName,
+        EXCLUDED_IPS: excludedIpsEnv(),
+      },
+      memorySize: 128,
+      timeout: Duration.seconds(5),
+      logRetention: logs.RetentionDays.TWO_WEEKS,
+    });
+    table.grantWriteData(sessionMetaFn);
 
     const rollupFn = new lambda.Function(this, "RollupFunction", {
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -91,6 +115,14 @@ export class LanternStack extends Stack {
       integration: new apigwIntegrations.HttpLambdaIntegration(
         "IngestIntegration",
         ingestionFn,
+      ),
+    });
+    httpApi.addRoutes({
+      path: "/session-recordings/meta",
+      methods: [apigwv2.HttpMethod.POST, apigwv2.HttpMethod.OPTIONS],
+      integration: new apigwIntegrations.HttpLambdaIntegration(
+        "SessionMetaIntegration",
+        sessionMetaFn,
       ),
     });
 
@@ -140,6 +172,10 @@ export class LanternStack extends Stack {
     new CfnOutput(this, "CdnIngestEndpoint", {
       value: `https://${cdn.distributionDomainName}/events`,
       description: "data-endpoint value for the tracker script's script tag (via CloudFront, resolves country)",
+    });
+    new CfnOutput(this, "CdnSessionMetaEndpoint", {
+      value: `https://${cdn.distributionDomainName}/session-recordings/meta`,
+      description: "data-record-endpoint value's metadata sibling — the tracker's recording.ts posts heartbeats here",
     });
   }
 }

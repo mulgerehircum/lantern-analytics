@@ -6,7 +6,7 @@
   "description": "AWS Lambda ingestion handler + infra-as-code (API Gateway, DynamoDB)",
   "main": "src/handler.ts",
   "scripts": {
-    "build": "esbuild src/handler.ts --bundle --minify --platform=node --target=node20 --outfile=dist/handler.js --external:@aws-sdk/* && esbuild src/rollup-handler.ts --bundle --minify --platform=node --target=node20 --outfile=dist/rollup-handler.js --external:@aws-sdk/*",
+    "build": "esbuild src/handler.ts --bundle --minify --platform=node --target=node20 --outfile=dist/handler.js --external:@aws-sdk/* && esbuild src/rollup-handler.ts --bundle --minify --platform=node --target=node20 --outfile=dist/rollup-handler.js --external:@aws-sdk/* && esbuild src/session-meta-handler.ts --bundle --minify --platform=node --target=node20 --outfile=dist/session-meta-handler.js --external:@aws-sdk/*",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

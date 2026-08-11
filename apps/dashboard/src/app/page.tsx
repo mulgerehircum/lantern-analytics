@@ -4,7 +4,8 @@ import { summarizeRollups } from "@/lib/summarize";
 import type { DashboardSummary } from "@/lib/summarize";
 import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filter";
 import type { DashboardFilters } from "@/lib/filter";
-import { DEFAULT_SITE_ID, SITES, getSite } from "@/lib/sites";
+import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
+import { ProjectSelector, fieldStyle } from "@/components/ProjectSelector";
 
 /**
  * Server Component — fetches DynamoDB directly, server-side. No client-side
@@ -79,6 +80,10 @@ export default async function DashboardPage({
         ) : (
           <span style={{ fontSize: "0.85rem", fontWeight: 400, color: "#b45309" }}> — not in site registry</span>
         )}
+        {" · "}
+        <a href={`/sessions?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", fontWeight: 400, color: "#4f46e5" }}>
+          Sessions
+        </a>
       </h1>
       {!filtered && liveEvents.length > 0 && (
         <p style={{ color: "#4f46e5", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
@@ -132,54 +137,6 @@ function Stat({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
-
-/**
- * Project selector — a plain GET form, same no-JS design as the filter bar.
- * Submitting navigates to ?siteId=<id>, clearing filters: switching projects
- * is a "start fresh here" action, and filters are per-site anyway.
- */
-function ProjectSelector({ siteId, siteUrl }: { siteId: string; siteUrl?: string }) {
-  return (
-    <form
-      method="GET"
-      style={{
-        display: "flex",
-        gap: "0.5rem",
-        alignItems: "flex-end",
-        flexWrap: "wrap",
-        marginBottom: "0.5rem",
-      }}
-    >
-      <label style={{ fontSize: "0.75rem", color: "#555" }}>
-        Project
-        <br />
-        <select name="siteId" defaultValue={siteId} style={fieldStyle}>
-          {SITES.map((s) => (
-            <option key={s.siteId} value={s.siteId}>
-              {s.name}
-            </option>
-          ))}
-          {!SITES.some((s) => s.siteId === siteId) && <option value={siteId}>{siteId} (unregistered)</option>}
-        </select>
-      </label>
-      <button type="submit" style={{ ...fieldStyle, cursor: "pointer", background: "#4f46e5", color: "#fff", border: "none" }}>
-        Open
-      </button>
-      {siteUrl && (
-        <a href={siteUrl} target="_blank" rel="noreferrer" style={{ fontSize: "0.85rem", color: "#4f46e5" }}>
-          {siteUrl}
-        </a>
-      )}
-    </form>
-  );
-}
-
-const fieldStyle: React.CSSProperties = {
-  padding: "6px 8px",
-  borderRadius: 6,
-  border: "1px solid #ccc",
-  fontSize: "0.85rem",
-};
 
 /**
  * Dimension filters. A plain GET form — no client JS, consistent with the
