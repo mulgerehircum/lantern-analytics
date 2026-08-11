@@ -12,3 +12,4 @@ cdk.out/
 .DS_Store
 
 .vercel
+.env*
