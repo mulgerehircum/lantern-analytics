@@ -116,6 +116,23 @@ if (config) {
     flushBuffer();
   }
 
+  /**
+   * Used only for the visibilitychange->"hidden" signal below — the closest
+   * thing to a definite "this session just ended" moment. The periodic
+   * flush() above only sends a heartbeat every METADATA_HEARTBEAT_EVERY_N_FLUSHES
+   * flushes; a visit that never reaches that many (a quick skim-and-leave —
+   * the common case, not the exception, for a lot of real traffic) would
+   * otherwise get flushBuffer() calls but literally zero metadata heartbeats,
+   * ever, making it permanently invisible in the dashboard's session list
+   * despite having real recording data sitting on the receiver. So: always
+   * send one final heartbeat here, regardless of the periodic cadence.
+   */
+  function flushFinal(): void {
+    if (stopIfPastMaxDuration()) return; // already flushed + sent a final heartbeat
+    flushBuffer();
+    sendMetadataHeartbeat();
+  }
+
   stopRecording = record({
     emit(event) {
       if (stopped) return;
@@ -133,6 +150,6 @@ if (config) {
   intervalId = setInterval(flush, FLUSH_INTERVAL_MS);
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") flush();
+    if (document.visibilityState === "hidden") flushFinal();
   });
 }
