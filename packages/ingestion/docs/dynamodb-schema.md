@@ -22,6 +22,7 @@ SK: EVENT#2026-08-08T14:32:10Z#f8e2c1
   country: "MD",
   device: "desktop",
   visitorHash: "9f2a...",   // hashed IP + UA, never raw IP — privacy requirement
+  isNewVisit: true,         // see packages/tracker/src/visit.ts — what "uniques" is computed from, not visitorHash
   ttl: 1736345530
 }
 ```
@@ -67,7 +68,11 @@ SK: AGG#2026-08-08#14
 }
 ```
 Custom events never contribute to `pageviews`/`uniques` — those count pageviews
-only. `eventDimensions` is keyed by event name → metadata key → string value.
+only. `uniques` is a count of pageviews with `isNewVisit: true`, not distinct
+`visitorHash` — a stateless, no-hashing heuristic (fresh navigation + non-same-site
+referrer, see packages/tracker/src/visit.ts) chosen so summing `uniques` across
+rollups is always exact, and so repeat/reload bot traffic naturally contributes 0
+rather than 1. `eventDimensions` is keyed by event name → metadata key → string value.
 Known tradeoff: high-cardinality string metadata (e.g. per-visit IDs) would
 bloat rollup items, so string metadata is assumed to be low-cardinality.
 Rollups written before custom events existed simply lack the last two fields;

@@ -2,6 +2,7 @@ import type { PageviewEvent } from "@lantern/shared";
 import { readConfig } from "./config";
 import { sendBeacon } from "./beacon";
 import { getReferrerHostname } from "./referrer";
+import { isNewVisit } from "./visit";
 import { isDoNotTrackEnabled } from "./dnt";
 import { isIgnored, setIgnored } from "./ignore";
 import { buildCustomEvent } from "./track";
@@ -24,7 +25,7 @@ declare global {
  */
 const config = readConfig();
 
-function trackPageview(path: string = location.pathname): void {
+function trackPageview(path: string = location.pathname, newVisit: boolean = false): void {
   if (!config) return;
 
   const event: PageviewEvent = {
@@ -32,6 +33,7 @@ function trackPageview(path: string = location.pathname): void {
     path,
     referrer: getReferrerHostname(),
     timestamp: new Date().toISOString(),
+    isNewVisit: newVisit,
   };
 
   sendBeacon(config.endpoint, event);
@@ -56,11 +58,13 @@ window.lantern = { track, ignore: setIgnored };
 
 // Entry point — runs once, synchronously, at script load. No cookies, no
 // localStorage identity (the one exception is the owner-set `lantern_ignore`
-// opt-out flag, see ignore.ts), no client-side hashing (uniqueness is derived
-// server-side from IP + UA, see packages/ingestion). See docs/design.md for
-// the full reasoning behind what this deliberately does NOT do.
+// opt-out flag, see ignore.ts). `isNewVisit()` (visit.ts) is evaluated only
+// here, for the true initial load — it's a stateless read of the browser's
+// own navigation-timing + referrer, not a client-side identity of any kind.
+// See docs/design.md for the full reasoning behind what this deliberately
+// does NOT do.
 if (!isDoNotTrackEnabled() && !isIgnored()) {
-  trackPageview();
+  trackPageview(location.pathname, isNewVisit());
   notifyPageview(sessionStorage);
 }
 

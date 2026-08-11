@@ -10,6 +10,7 @@ function event(overrides: Partial<FilterableEvent> = {}): FilterableEvent {
     country: "MD",
     device: "desktop",
     visitorHash: "hash-1",
+    isNewVisit: false,
     ...overrides,
   };
 }
@@ -138,10 +139,10 @@ describe("buildFilteredRollups", () => {
 
   it("groups events by hour and sums per-hour uniques from the filtered set", () => {
     const events = [
-      event({ SK: "EVENT#2026-08-08T11:00:00Z#a", path: "/", visitorHash: "v1" }),
-      event({ SK: "EVENT#2026-08-08T11:30:00Z#b", path: "/", visitorHash: "v1" }),
-      event({ SK: "EVENT#2026-08-08T11:59:00Z#c", path: "/", visitorHash: "v2" }),
-      event({ SK: "EVENT#2026-08-08T12:05:00Z#d", path: "/", visitorHash: "v3" }),
+      event({ SK: "EVENT#2026-08-08T11:00:00Z#a", path: "/", visitorHash: "v1", isNewVisit: true }),
+      event({ SK: "EVENT#2026-08-08T11:30:00Z#b", path: "/", visitorHash: "v1", isNewVisit: false }),
+      event({ SK: "EVENT#2026-08-08T11:59:00Z#c", path: "/", visitorHash: "v2", isNewVisit: true }),
+      event({ SK: "EVENT#2026-08-08T12:05:00Z#d", path: "/", visitorHash: "v3", isNewVisit: true }),
     ];
     const rollups = buildFilteredRollups(events, {});
     expect(rollups).toEqual([

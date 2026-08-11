@@ -70,6 +70,7 @@ export async function handler(
       path: tracked.path,
       referrer: tracked.referrer,
       timestamp: tracked.timestamp,
+      isNewVisit: tracked.isNewVisit,
       visitorHash,
       country,
       device,

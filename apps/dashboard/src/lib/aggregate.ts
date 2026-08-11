@@ -15,6 +15,9 @@ export interface RawEventItem {
   country: string;
   device: string;
   visitorHash: string;
+  /** Pageview only — see packages/tracker/src/visit.ts. Absent on rollups
+   * written before this field existed; treated as `false`. */
+  isNewVisit?: boolean;
   /** Present iff this is a custom event (e.g. "contact_click"). */
   name?: string;
   metadata?: Record<string, string | number | boolean>;
@@ -42,6 +45,10 @@ function increment(map: Record<string, number>, key: string): void {
   map[key] = (map[key] ?? 0) + 1;
 }
 
+// Uniques are a count of pageviews flagged isNewVisit (see
+// packages/tracker/src/visit.ts and packages/ingestion/src/aggregate.ts's
+// doc comment) — not distinct visitorHash. Summing this count across any
+// range of rollups is exact, unlike the old Set-per-hour value.
 export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
   const topPages: Record<string, number> = {};
   const referrers: Record<string, number> = {};
@@ -49,7 +56,7 @@ export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
   const devices: Record<string, number> = {};
   const customEvents: Record<string, number> = {};
   const eventDimensions: Record<string, Record<string, Record<string, number>>> = {};
-  const uniqueVisitors = new Set<string>();
+  let uniques = 0;
 
   for (const event of events) {
     if (event.name) {
@@ -67,12 +74,12 @@ export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
     increment(referrers, event.referrer || "direct");
     increment(countries, event.country);
     increment(devices, event.device);
-    if (event.visitorHash) uniqueVisitors.add(event.visitorHash);
+    if (event.isNewVisit) uniques += 1;
   }
 
   return {
     pageviews: events.filter((e) => !e.name).length,
-    uniques: uniqueVisitors.size,
+    uniques,
     topPages,
     referrers,
     countries,

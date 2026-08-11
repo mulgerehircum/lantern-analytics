@@ -38,7 +38,12 @@ export function parseTrackedEvent(body: string | undefined): TrackedEvent | null
   }
 
   if (typeof referrer !== "string") return null;
-  const pageview: PageviewEvent = { siteId, path, referrer, timestamp };
+  // Anything other than a literal `true` — missing, wrong type, tampered —
+  // defaults to `false`. Undercounting uniques is the safe failure mode; a
+  // crafted `isNewVisit: true` on every request would just inflate the
+  // metric this field exists to make trustworthy.
+  const isNewVisit = (parsed as Record<string, unknown>).isNewVisit === true;
+  const pageview: PageviewEvent = { siteId, path, referrer, timestamp, isNewVisit };
   return pageview;
 }
 

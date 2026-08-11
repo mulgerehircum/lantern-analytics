@@ -70,6 +70,7 @@ export interface RawEventRecord {
   country: string;
   device: string;
   visitorHash: string;
+  isNewVisit?: boolean;
   name?: string;
   metadata?: Record<string, string | number | boolean>;
 }

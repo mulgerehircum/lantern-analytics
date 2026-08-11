@@ -16,7 +16,22 @@ describe("parsePageviewEvent", () => {
       path: "/pricing",
       referrer: "google.com",
       timestamp: "2026-08-08T10:00:00.000Z",
+      isNewVisit: false,
     });
+  });
+
+  it("accepts isNewVisit: true", () => {
+    const body = JSON.stringify({ ...JSON.parse(validBody), isNewVisit: true });
+    expect(parsePageviewEvent(body)?.isNewVisit).toBe(true);
+  });
+
+  it("defaults isNewVisit to false when absent", () => {
+    expect(parsePageviewEvent(validBody)?.isNewVisit).toBe(false);
+  });
+
+  it("defaults isNewVisit to false for any non-true value (tamper-resistant)", () => {
+    const body = JSON.stringify({ ...JSON.parse(validBody), isNewVisit: "true" });
+    expect(parsePageviewEvent(body)?.isNewVisit).toBe(false);
   });
 
   it("rejects undefined body", () => {
@@ -66,6 +81,7 @@ describe("parseTrackedEvent", () => {
       path: "/",
       referrer: "google.com",
       timestamp: "2026-08-08T10:00:00.000Z",
+      isNewVisit: false,
     });
   });
 

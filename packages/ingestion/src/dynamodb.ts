@@ -37,6 +37,7 @@ export async function putRawEvent(event: EnrichedPageviewEvent | EnrichedCustomE
     item.metadata = event.metadata;
   } else {
     item.referrer = event.referrer;
+    item.isNewVisit = event.isNewVisit ?? false;
   }
 
   await client.send(

@@ -8,6 +8,7 @@ function event(overrides: Partial<RawEventItem> = {}): RawEventItem {
     country: "unknown",
     device: "desktop",
     visitorHash: "hash-a",
+    isNewVisit: false,
     ...overrides,
   };
 }
@@ -26,11 +27,11 @@ describe("aggregateEvents (dashboard copy, mirrors ingestion's)", () => {
     });
   });
 
-  it("counts uniques by distinct visitorHash, not by event count", () => {
+  it("counts uniques by isNewVisit, not by distinct visitorHash or event count", () => {
     const result = aggregateEvents([
-      event({ visitorHash: "a" }),
-      event({ visitorHash: "a" }),
-      event({ visitorHash: "b" }),
+      event({ visitorHash: "a", isNewVisit: true }),
+      event({ visitorHash: "a", isNewVisit: false }),
+      event({ visitorHash: "b", isNewVisit: true }),
     ]);
     expect(result.pageviews).toBe(3);
     expect(result.uniques).toBe(2);
@@ -44,7 +45,7 @@ describe("aggregateEvents (dashboard copy, mirrors ingestion's)", () => {
     const result = aggregateEvents([
       event({ name: "contact_click", metadata: { platform: "email" }, referrer: undefined }),
       event({ name: "contact_click", metadata: { platform: "email" }, referrer: undefined }),
-      event({ visitorHash: "a" }),
+      event({ isNewVisit: true }),
     ]);
     expect(result.pageviews).toBe(1);
     expect(result.uniques).toBe(1);

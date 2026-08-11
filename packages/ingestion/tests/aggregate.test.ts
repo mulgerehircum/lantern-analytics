@@ -8,6 +8,7 @@ function event(overrides: Partial<RawEventItem> = {}): RawEventItem {
     country: "unknown",
     device: "desktop",
     visitorHash: "hash-a",
+    isNewVisit: false,
     ...overrides,
   };
 }
@@ -31,14 +32,22 @@ describe("aggregateEvents", () => {
     expect(result.pageviews).toBe(3);
   });
 
-  it("counts uniques by distinct visitorHash, not by event count", () => {
+  it("counts uniques by isNewVisit, not by distinct visitorHash or event count", () => {
+    // Same visitorHash on all three (as a real repeat-reload visitor would
+    // have within one day) — uniques should reflect isNewVisit, not the hash.
     const result = aggregateEvents([
-      event({ visitorHash: "a" }),
-      event({ visitorHash: "a" }),
-      event({ visitorHash: "b" }),
+      event({ visitorHash: "a", isNewVisit: true }),
+      event({ visitorHash: "a", isNewVisit: false }), // e.g. internal nav or reload
+      event({ visitorHash: "b", isNewVisit: true }),
     ]);
     expect(result.pageviews).toBe(3);
     expect(result.uniques).toBe(2);
+  });
+
+  it("never counts a reload/internal-nav pageview as unique, even with a fresh visitorHash", () => {
+    const result = aggregateEvents([event({ visitorHash: "c", isNewVisit: false })]);
+    expect(result.pageviews).toBe(1);
+    expect(result.uniques).toBe(0);
   });
 
   it("buckets an empty referrer as direct, not as an empty-string key", () => {
@@ -63,7 +72,7 @@ describe("aggregateEvents", () => {
       event({ name: "contact_click", metadata: { platform: "email" }, referrer: undefined }),
       event({ name: "contact_click", metadata: { platform: "email" }, referrer: undefined }),
       event({ name: "cv_download", metadata: { filename: "CV.pdf" }, referrer: undefined }),
-      event({ visitorHash: "a" }),
+      event({ isNewVisit: true }),
     ]);
     expect(result.pageviews).toBe(1);
     expect(result.uniques).toBe(1);

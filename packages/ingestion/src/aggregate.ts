@@ -5,6 +5,9 @@ export interface RawEventItem {
   country: string;
   device: string;
   visitorHash: string;
+  /** Pageview only — see packages/tracker/src/visit.ts. Absent on rollups
+   * written before this field existed; treated as `false`. */
+  isNewVisit?: boolean;
   /** Present iff this is a custom event (e.g. "contact_click"). */
   name?: string;
   metadata?: Record<string, string | number | boolean>;
@@ -36,11 +39,25 @@ function increment(map: Record<string, number>, key: string): void {
 
 /**
  * Pure aggregation — no AWS calls, so this is cheap to test exhaustively.
- * Uniques are counted by distinct visitorHash within the hour; an empty
- * referrer is bucketed as "direct" (a blank referrer means the visit didn't
- * come via a link, not that the data is missing). Custom events are tallied
- * into `customEvents`/`eventDimensions` and deliberately never touch the
- * pageview/uniques totals.
+ *
+ * Uniques are a count of pageviews flagged `isNewVisit` (see
+ * packages/tracker/src/visit.ts) — NOT distinct `visitorHash`. That switch
+ * (see repo history around the "uniques from one country" investigation)
+ * fixes two real problems the hash-based Set approach had: (1) `visitorHash`
+ * rotates its salt daily, so summing per-hour Sets across days systematically
+ * overcounts the same real visitor as several; (2) a Set only dedupes an
+ * *identity*, it says nothing about whether the traffic looked like genuine
+ * new visits — a bot reloading the same URL in a loop still has one stable
+ * `visitorHash` per day, but every reload set `isNewVisit: false`, so it
+ * correctly contributes 0 uniques instead of 1. Because `isNewVisit` is
+ * decided once per real page load (never per hour), summing this count
+ * across any range of rollups is an exact total, not the approximation the
+ * old Set-per-hour value was.
+ *
+ * An empty referrer is bucketed as "direct" (a blank referrer means the
+ * visit didn't come via a link, not that the data is missing). Custom
+ * events are tallied into `customEvents`/`eventDimensions` and deliberately
+ * never touch the pageview/uniques totals.
  */
 export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
   const topPages: Record<string, number> = {};
@@ -49,7 +66,7 @@ export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
   const devices: Record<string, number> = {};
   const customEvents: Record<string, number> = {};
   const eventDimensions: Record<string, Record<string, Record<string, number>>> = {};
-  const uniqueVisitors = new Set<string>();
+  let uniques = 0;
 
   for (const event of events) {
     if (event.name) {
@@ -67,12 +84,12 @@ export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
     increment(referrers, event.referrer || "direct");
     increment(countries, event.country);
     increment(devices, event.device);
-    if (event.visitorHash) uniqueVisitors.add(event.visitorHash);
+    if (event.isNewVisit) uniques += 1;
   }
 
   return {
     pageviews: events.filter((e) => !e.name).length,
-    uniques: uniqueVisitors.size,
+    uniques,
     topPages,
     referrers,
     countries,

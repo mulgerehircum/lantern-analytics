@@ -82,12 +82,14 @@ function summarizeCustomEvents(
 }
 
 /**
- * Note on uniques: summing per-hour `uniques` is an approximation, not an
- * exact distinct-visitor count across the full range — a visitor active in
- * two different hours gets counted twice. Exact cross-hour uniques would
- * need the raw visitorHash set, which rollups deliberately don't retain
- * (see dynamodb-schema.md). Fine for a trend number; documented here so
- * it's a known approximation, not a silent inaccuracy someone finds later.
+ * Note on uniques: each hourly rollup's `uniques` is a count of pageviews
+ * flagged `isNewVisit` (packages/tracker/src/visit.ts), decided once per
+ * real page load — never per hour. Summing it across any range of rollups
+ * is therefore an exact total, unlike the old distinct-visitorHash-per-hour
+ * approach this replaced (that one genuinely double-counted a visitor
+ * active across an hour boundary, and inflated further across days because
+ * visitorHash's salt rotates daily — see dynamodb-schema.md and the repo
+ * history around the "uniques from one country" investigation).
  */
 export function summarizeRollups(rollups: HourlyRollupItem[]): DashboardSummary {
   const totalPageviews = rollups.reduce((sum, r) => sum + r.pageviews, 0);

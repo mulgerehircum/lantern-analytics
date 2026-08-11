@@ -20,6 +20,16 @@ export interface PageviewEvent {
   /** Hostname only, e.g. "google.com" — never the full referrer URL. */
   referrer: string;
   timestamp: string;
+  /**
+   * True only for the true initial page load of a visit that looks fresh
+   * (not a reload/back-forward restore, not same-site internal navigation)
+   * — see packages/tracker/src/visit.ts. Optional so older cached tracker
+   * bundles keep working: absent/non-true is treated as `false` everywhere
+   * downstream (undercounting uniques is the safe failure mode, not
+   * overcounting). This, not `visitorHash`, is what "uniques" is computed
+   * from — see packages/ingestion/src/aggregate.ts.
+   */
+  isNewVisit?: boolean;
 }
 
 /** Anything the tracker can send: either a pageview or a named custom event. */
