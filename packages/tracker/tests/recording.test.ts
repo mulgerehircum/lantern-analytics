@@ -78,19 +78,27 @@ describe("getOrCreateSession", () => {
     expect(second.sessionId).not.toBe(first.sessionId);
   });
 
-  it("resets the page count when a new session starts", () => {
+  it("resets the page count to 1 (not 0) when a new session starts", () => {
+    // Regression test: index.ts always calls notifyPageview() for the
+    // current page's view BEFORE conditionally calling getOrCreateSession()
+    // — so by the time a new session is created, this page's view already
+    // happened. Resetting to 0 here silently produced pageCount: 0 on every
+    // fresh session's first heartbeat, which session-meta-validate.ts
+    // rejects (`pageCount > 0` required) — every new session's metadata was
+    // discarded server-side until this was fixed.
     const storage = makeFakeStorage();
     const random = makeFakeRandom([UUID_A]);
 
-    getOrCreateSession(storage, random, 1_000_000);
+    getOrCreateSession(storage, random, 1_000_000); // starts at 1, not 0
     notifyPageview(storage);
     notifyPageview(storage);
-    expect(getPageCount(storage)).toBe(2);
+    expect(getPageCount(storage)).toBe(3);
 
-    // New session (far past inactivity timeout) should reset the counter.
+    // New session (far past inactivity timeout) should reset the counter to
+    // 1 — representing the page load that's already happened by this point.
     const random2 = makeFakeRandom([UUID_B]);
     getOrCreateSession(storage, random2, 1_000_000 + 60 * 60 * 1000);
-    expect(getPageCount(storage)).toBe(0);
+    expect(getPageCount(storage)).toBe(1);
   });
 });
 

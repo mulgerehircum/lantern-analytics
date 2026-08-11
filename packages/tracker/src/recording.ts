@@ -56,7 +56,14 @@ export function getOrCreateSession(
   const sessionId = random.randomUUID().replace(/-/g, "");
   storage.setItem(SESSION_ID_KEY, sessionId);
   storage.setItem(SESSION_STARTED_KEY, String(now));
-  storage.setItem(SESSION_PAGE_COUNT_KEY, "0");
+  // "1", not "0": index.ts always calls notifyPageview() for the initial
+  // pageview BEFORE conditionally calling getOrCreateSession() (only when
+  // recording is enabled) — by the time a new session is created here, the
+  // current page's view has already happened. Resetting to "0" wiped out
+  // that already-counted pageview, so a brand-new session's first heartbeat
+  // always reported pageCount: 0 — which fails session-meta-validate.ts's
+  // `pageCount > 0` check server-side, silently discarding the heartbeat.
+  storage.setItem(SESSION_PAGE_COUNT_KEY, "1");
   return { sessionId, startedAt: new Date(now).toISOString() };
 }
 

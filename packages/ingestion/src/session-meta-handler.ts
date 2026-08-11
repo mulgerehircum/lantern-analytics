@@ -33,15 +33,23 @@ export async function handler(
 
   const meta = parseSessionRecordingMeta(event.body);
   if (!meta) {
+    // Same reasoning as rollup-handler.ts's per-run logging: a missing
+    // dashboard datapoint should be one CloudWatch query away from being
+    // explained, not a silent black box. bodyLength only, not the payload
+    // itself — this endpoint is public, nothing on it is trusted, so keep
+    // logging minimal even though this particular shape has no PII.
+    console.log(JSON.stringify({ sessionMeta: { status: "invalid", bodyLength: event.body?.length ?? 0 } }));
     return { statusCode: 400, headers, body: "Invalid payload" };
   }
 
   const sourceIp = event.requestContext.http.sourceIp;
   if (isIpExcluded(sourceIp, EXCLUDED_IPS)) {
+    console.log(JSON.stringify({ sessionMeta: { status: "excluded", siteId: meta.siteId } }));
     return { statusCode: 204, headers };
   }
 
   await putSessionRecordingMeta(meta);
+  console.log(JSON.stringify({ sessionMeta: { status: "wrote", siteId: meta.siteId, sessionId: meta.sessionId, durationMs: meta.durationMs, pageCount: meta.pageCount } }));
 
   return { statusCode: 204, headers };
 }
