@@ -8,6 +8,8 @@ const validBody = JSON.stringify({
   startedAt: "2026-08-08T10:00:00.000Z",
   durationMs: 12000,
   pageCount: 2,
+  path: "/pricing",
+  referrer: "google.com",
 });
 
 describe("parseSessionRecordingMeta", () => {
@@ -19,7 +21,24 @@ describe("parseSessionRecordingMeta", () => {
       durationMs: 12000,
       pageCount: 2,
       storageRef: "site-1/abc12345xyz0",
+      path: "/pricing",
+      referrer: "google.com",
     });
+  });
+
+  it("accepts an empty-string referrer (direct traffic)", () => {
+    const body = JSON.stringify({ ...JSON.parse(validBody), referrer: "" });
+    expect(parseSessionRecordingMeta(body)?.referrer).toBe("");
+  });
+
+  it("rejects a missing path", () => {
+    const { path, ...rest } = JSON.parse(validBody);
+    expect(parseSessionRecordingMeta(JSON.stringify(rest))).toBeNull();
+  });
+
+  it("rejects a missing referrer", () => {
+    const { referrer, ...rest } = JSON.parse(validBody);
+    expect(parseSessionRecordingMeta(JSON.stringify(rest))).toBeNull();
   });
 
   it("ignores a client-supplied storageRef and recomputes it", () => {
@@ -29,6 +48,8 @@ describe("parseSessionRecordingMeta", () => {
       startedAt: "2026-08-08T10:00:00.000Z",
       durationMs: 12000,
       pageCount: 2,
+      path: "/pricing",
+      referrer: "google.com",
       storageRef: "../../etc/passwd",
     });
     expect(parseSessionRecordingMeta(body)?.storageRef).toBe("site-1/abc12345xyz0");

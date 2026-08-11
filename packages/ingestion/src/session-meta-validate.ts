@@ -7,6 +7,17 @@ import {
 } from "@lantern/shared";
 
 /**
+ * The subset of SessionRecordingMeta this endpoint's client payload can ever
+ * populate — country/device/visitorHash are server-derived from headers (see
+ * session-meta-handler.ts, mirroring handler.ts's enrichment step) and are
+ * deliberately excluded from what the client can set.
+ */
+export type ParsedSessionRecordingMeta = Pick<
+  SessionRecordingMeta,
+  "siteId" | "sessionId" | "startedAt" | "durationMs" | "pageCount" | "storageRef" | "path" | "referrer"
+>;
+
+/**
  * Parses and validates a session-recording metadata heartbeat, or returns
  * null for anything malformed. Like `validate.ts`'s `parseTrackedEvent`, this
  * endpoint is public — nothing on the wire is trusted.
@@ -18,7 +29,7 @@ import {
  * path string that the dashboard later uses to request a blob — see
  * packages/shared/docs/event-schema.md for the full reasoning.
  */
-export function parseSessionRecordingMeta(body: string | undefined): SessionRecordingMeta | null {
+export function parseSessionRecordingMeta(body: string | undefined): ParsedSessionRecordingMeta | null {
   if (!body) return null;
 
   let parsed: unknown;
@@ -29,13 +40,15 @@ export function parseSessionRecordingMeta(body: string | undefined): SessionReco
   }
 
   if (typeof parsed !== "object" || parsed === null) return null;
-  const { siteId, sessionId, startedAt, durationMs, pageCount } = parsed as Record<string, unknown>;
+  const { siteId, sessionId, startedAt, durationMs, pageCount, path, referrer } = parsed as Record<string, unknown>;
 
   if (!isValidSiteIdForPath(siteId)) return null;
   if (!isValidSessionId(sessionId)) return null;
   if (typeof startedAt !== "string" || Number.isNaN(Date.parse(startedAt))) return null;
   if (typeof durationMs !== "number" || durationMs < 0 || durationMs > MAX_SESSION_DURATION_MS) return null;
   if (typeof pageCount !== "number" || pageCount <= 0 || pageCount > MAX_SESSION_PAGE_COUNT) return null;
+  if (typeof path !== "string") return null;
+  if (typeof referrer !== "string") return null;
 
   return {
     siteId,
@@ -44,5 +57,7 @@ export function parseSessionRecordingMeta(body: string | undefined): SessionReco
     durationMs,
     pageCount,
     storageRef: `${siteId}/${sessionId}`,
+    path,
+    referrer,
   };
 }

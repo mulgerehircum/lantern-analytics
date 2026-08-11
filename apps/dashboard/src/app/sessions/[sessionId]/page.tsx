@@ -41,6 +41,10 @@ export default async function SessionReplayPage({
           <p style={{ color: "#666", fontSize: "0.85rem" }}>
             Started {new Date(session.startedAt).toLocaleString()} · {session.pageCount} page
             {session.pageCount === 1 ? "" : "s"}
+            {session.path ? <> · landed on {session.path}</> : null}
+            {session.referrer ? <> · via {session.referrer}</> : null}
+            {session.country ? <> · {session.country}</> : null}
+            {session.device ? <> · {session.device}</> : null}
           </p>
           <ReplayPlayer siteId={siteId} sessionId={sessionId} />
         </>

@@ -40,7 +40,16 @@ function SessionsTable({
   sessions,
 }: {
   siteId: string;
-  sessions: Array<{ sessionId: string; startedAt: string; durationMs: number; pageCount: number }>;
+  sessions: Array<{
+    sessionId: string;
+    startedAt: string;
+    durationMs: number;
+    pageCount: number;
+    path?: string;
+    referrer?: string;
+    country?: string;
+    device?: string;
+  }>;
 }) {
   if (sessions.length === 0) {
     return <p style={{ color: "#999", marginTop: "1.5rem" }}>No recorded sessions yet.</p>;
@@ -53,6 +62,10 @@ function SessionsTable({
           <th style={{ padding: "6px 0" }}>Started</th>
           <th style={{ padding: "6px 0" }}>Duration</th>
           <th style={{ padding: "6px 0" }}>Pages</th>
+          <th style={{ padding: "6px 0" }}>Landing page</th>
+          <th style={{ padding: "6px 0" }}>Referrer</th>
+          <th style={{ padding: "6px 0" }}>Country</th>
+          <th style={{ padding: "6px 0" }}>Device</th>
         </tr>
       </thead>
       <tbody>
@@ -68,6 +81,10 @@ function SessionsTable({
             </td>
             <td style={{ padding: "6px 0" }}>{formatDuration(s.durationMs)}</td>
             <td style={{ padding: "6px 0" }}>{s.pageCount}</td>
+            <td style={{ padding: "6px 0" }}>{s.path || "—"}</td>
+            <td style={{ padding: "6px 0" }}>{s.referrer || "direct"}</td>
+            <td style={{ padding: "6px 0" }}>{s.country ?? "—"}</td>
+            <td style={{ padding: "6px 0" }}>{s.device ?? "—"}</td>
           </tr>
         ))}
       </tbody>

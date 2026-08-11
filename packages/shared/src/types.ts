@@ -47,4 +47,16 @@ export interface SessionRecordingMeta {
   durationMs: number;
   pageCount: number;
   storageRef: string;
+  /** Landing page path — the value from the session's first heartbeat only;
+   * later heartbeats (from later pages, if the session spans more than one)
+   * never overwrite it. See ingestion's dynamodb.ts putSessionRecordingMeta. */
+  path: string;
+  /** Landing referrer, hostname only (see tracker's referrer.ts) — same
+   * "first heartbeat wins" rule as `path`. */
+  referrer: string;
+  /** Server-derived, same as EnrichedPageviewEvent/EnrichedCustomEvent —
+   * never sent by the client. */
+  country: string;
+  device: "desktop" | "mobile" | "tablet";
+  visitorHash: string;
 }

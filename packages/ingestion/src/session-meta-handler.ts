@@ -3,6 +3,9 @@ import { parseSessionRecordingMeta } from "./session-meta-validate";
 import { putSessionRecordingMeta } from "./dynamodb";
 import { corsHeaders } from "./cors";
 import { isIpExcluded, parseExcludedIps } from "./ip-exclude";
+import { computeVisitorHash } from "./visitor-hash";
+import { classifyDevice } from "./device";
+import { resolveCountry } from "./geo";
 
 // Parsed once per Lambda container, same as handler.ts.
 const EXCLUDED_IPS = parseExcludedIps(process.env.EXCLUDED_IPS);
@@ -48,7 +51,16 @@ export async function handler(
     return { statusCode: 204, headers };
   }
 
-  await putSessionRecordingMeta(meta);
+  // Same enrichment as handler.ts's pageview/custom-event path — derived
+  // from headers, never trusted from the client. This is what makes a
+  // session recording joinable to the same visitor/geo/device breakdown the
+  // pageview side already has, without ever persisting the raw IP/UA.
+  const userAgent = event.headers["user-agent"] ?? "";
+  const visitorHash = computeVisitorHash(sourceIp, userAgent);
+  const country = resolveCountry(event.headers["cloudfront-viewer-country"]);
+  const device = classifyDevice(userAgent);
+
+  await putSessionRecordingMeta({ ...meta, visitorHash, country, device });
   console.log(JSON.stringify({ sessionMeta: { status: "wrote", siteId: meta.siteId, sessionId: meta.sessionId, durationMs: meta.durationMs, pageCount: meta.pageCount } }));
 
   return { statusCode: 204, headers };

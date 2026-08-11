@@ -26,6 +26,12 @@ export interface SessionRecordingItem {
   durationMs: number;
   pageCount: number;
   storageRef: string;
+  /** Landing page for the session — may be absent on records written before this field existed. */
+  path?: string;
+  referrer?: string;
+  country?: string;
+  device?: "desktop" | "mobile" | "tablet";
+  visitorHash?: string;
 }
 
 /**

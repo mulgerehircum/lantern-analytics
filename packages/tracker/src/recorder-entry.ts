@@ -1,5 +1,6 @@
 import { record } from "rrweb";
 import { sendRecordingBatch } from "./recording-transport";
+import { getReferrerHostname } from "./referrer";
 import { MAX_SESSION_DURATION_MS } from "@lantern/shared";
 
 /**
@@ -57,6 +58,12 @@ if (config) {
       // of this fix.
       durationMs: Math.min(Date.now() - startedAtMs, MAX_SESSION_DURATION_MS),
       pageCount: config!.pageCount,
+      // Wherever the visitor currently is — sent on every heartbeat, but
+      // only the session's FIRST heartbeat actually persists these
+      // server-side (see dynamodb.ts's putSessionRecordingMeta): the stored
+      // value is the landing page/referrer, not "whatever page is open now".
+      path: location.pathname,
+      referrer: getReferrerHostname(),
     });
 
     if (typeof navigator.sendBeacon === "function") {
