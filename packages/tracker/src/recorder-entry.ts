@@ -72,7 +72,7 @@ if (config) {
     }).catch(() => {});
   }
 
-  function flushBuffer(): void {
+  function flushBuffer(keepalive: boolean): void {
     if (buffer.length === 0) return;
 
     const events = buffer;
@@ -82,7 +82,7 @@ if (config) {
     const currentSeq = seq;
     seq += 1;
 
-    sendRecordingBatch(config!.recordEndpoint, config!.siteId, config!.sessionId, config!.recordToken, currentSeq, events);
+    sendRecordingBatch(config!.recordEndpoint, config!.siteId, config!.sessionId, config!.recordToken, currentSeq, events, keepalive);
 
     flushCount += 1;
     if (flushCount % METADATA_HEARTBEAT_EVERY_N_FLUSHES === 0) {
@@ -104,7 +104,7 @@ if (config) {
   function stopIfPastMaxDuration(): boolean {
     if (stopped || Date.now() - startedAtMs < MAX_SESSION_DURATION_MS) return false;
     stopped = true;
-    flushBuffer();
+    flushBuffer(false);
     sendMetadataHeartbeat();
     if (intervalId !== undefined) clearInterval(intervalId);
     stopRecording?.();
@@ -113,7 +113,7 @@ if (config) {
 
   function flush(): void {
     if (stopIfPastMaxDuration()) return;
-    flushBuffer();
+    flushBuffer(false);
   }
 
   /**
@@ -129,7 +129,7 @@ if (config) {
    */
   function flushFinal(): void {
     if (stopIfPastMaxDuration()) return; // already flushed + sent a final heartbeat
-    flushBuffer();
+    flushBuffer(true);
     sendMetadataHeartbeat();
   }
 
