@@ -2,6 +2,7 @@ import { getSessionRecordings } from "@/lib/sessions";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { ProjectSelector } from "@/components/ProjectSelector";
 import { ReplayPlayer } from "@/components/ReplayPlayer";
+import { LocalDateTime } from "@/components/LocalDateTime";
 
 /**
  * Session replay detail page. Looks the session up via the same
@@ -39,7 +40,7 @@ export default async function SessionReplayPage({
       {session ? (
         <>
           <p style={{ color: "#666", fontSize: "0.85rem" }}>
-            Started {new Date(session.startedAt).toLocaleString()} · {session.pageCount} page
+            Started <LocalDateTime iso={session.startedAt} /> · {session.pageCount} page
             {session.pageCount === 1 ? "" : "s"}
             {session.path ? <> · landed on {session.path}</> : null}
             {session.referrer ? <> · via {session.referrer}</> : null}

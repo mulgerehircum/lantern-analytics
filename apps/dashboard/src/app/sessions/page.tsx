@@ -1,11 +1,14 @@
 import { getSessionRecordings } from "@/lib/sessions";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { ProjectSelector } from "@/components/ProjectSelector";
+import { LocalDateTime } from "@/components/LocalDateTime";
 
 /**
  * Session list (Phase 2). Same conventions as the root dashboard page:
  * Server Component fetching DynamoDB directly, `?siteId=` query-param
- * routing (not `/[siteId]/...` — see repo decisions for why), no client JS.
+ * routing (not `/[siteId]/...` — see repo decisions for why). The one bit of
+ * client JS is <LocalDateTime> — timestamps need the viewer's own browser
+ * timezone, which only the client knows.
  */
 export default async function SessionsPage({
   searchParams,
@@ -76,7 +79,7 @@ function SessionsTable({
                 href={`/sessions/${encodeURIComponent(s.sessionId)}?siteId=${encodeURIComponent(siteId)}`}
                 style={{ color: "#4f46e5" }}
               >
-                {new Date(s.startedAt).toLocaleString()}
+                <LocalDateTime iso={s.startedAt} />
               </a>
             </td>
             <td style={{ padding: "6px 0" }}>{formatDuration(s.durationMs)}</td>
