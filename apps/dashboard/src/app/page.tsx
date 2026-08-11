@@ -6,6 +6,7 @@ import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filte
 import type { DashboardFilters } from "@/lib/filter";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { ProjectSelector, fieldStyle } from "@/components/ProjectSelector";
+import { HourBar } from "@/components/HourBar";
 import {
   currentMonth,
   shiftMonth,
@@ -361,16 +362,7 @@ function TimeSeriesChart({ data }: { data: Array<{ hour: string; pageviews: numb
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120, borderBottom: "1px solid #ddd" }}>
       {data.map((d) => (
-        <div
-          key={d.hour}
-          title={`${d.hour}: ${d.pageviews}`}
-          style={{
-            width: 12,
-            height: `${(d.pageviews / max) * 100}%`,
-            background: "#4f46e5",
-            borderRadius: "2px 2px 0 0",
-          }}
-        />
+        <HourBar key={d.hour} hour={d.hour} pageviews={d.pageviews} heightPct={(d.pageviews / max) * 100} />
       ))}
     </div>
   );

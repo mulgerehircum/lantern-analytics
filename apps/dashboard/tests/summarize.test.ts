@@ -44,14 +44,14 @@ describe("summarizeRollups", () => {
     ]);
   });
 
-  it("builds a time series sorted by hour using the SK as the label", () => {
+  it("builds a time series sorted by hour, as a real ISO timestamp for each hour bucket", () => {
     const result = summarizeRollups([
       rollup({ SK: "AGG#2026-08-08#14", pageviews: 10 }),
       rollup({ SK: "AGG#2026-08-08#11", pageviews: 4 }),
     ]);
     expect(result.timeSeries).toEqual([
-      { hour: "2026-08-08#11", pageviews: 4 },
-      { hour: "2026-08-08#14", pageviews: 10 },
+      { hour: "2026-08-08T11:00:00.000Z", pageviews: 4 },
+      { hour: "2026-08-08T14:00:00.000Z", pageviews: 10 },
     ]);
   });
 

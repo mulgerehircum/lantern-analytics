@@ -100,9 +100,13 @@ export function summarizeRollups(rollups: HourlyRollupItem[]): DashboardSummary 
   const countries = toSortedEntries(mergeMaps(rollups.map((r) => r.countries)), "country");
   const devices = toSortedEntries(mergeMaps(rollups.map((r) => r.devices)), "device");
 
+  // `hour` is a real ISO timestamp (start of that UTC hour), not the raw
+  // "2026-08-11#21" rollup-key fragment — the chart needs an actual Date to
+  // format in the viewer's own local timezone (see LocalDateTime/HourBar),
+  // and "#" was never meant to be user-facing.
   const timeSeries = [...rollups]
     .sort((a, b) => a.SK.localeCompare(b.SK))
-    .map((r) => ({ hour: r.SK.replace("AGG#", ""), pageviews: r.pageviews }));
+    .map((r) => ({ hour: `${r.SK.replace("AGG#", "").replace("#", "T")}:00:00.000Z`, pageviews: r.pageviews }));
 
   const { customEvents, customEventBreakdown } = summarizeCustomEvents(rollups);
 
