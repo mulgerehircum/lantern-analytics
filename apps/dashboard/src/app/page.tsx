@@ -383,6 +383,13 @@ function TimeSeriesChart({ data }: { data: Array<{ hour: string; pageviews: numb
 function MonthlyTrendChart({ siteId, data }: { siteId: string; data: MonthlyTrendPoint[] }) {
   if (data.length === 0) return <p style={{ color: "#999" }}>No data yet</p>;
   const max = Math.max(...data.map((d) => d.pageviews), 1);
+  // Pixel height, not a CSS percentage: the bar's direct parent is now the
+  // <a> (added so the whole bar+label is one click target), which has no
+  // explicit height of its own — a `%` height resolves against that
+  // undefined height and collapses to ~0. A pixel value has no such
+  // dependency; alignItems: "flex-end" on the row below still lines every
+  // bar+label up along the same baseline regardless of height.
+  const BAR_AREA_PX = 90;
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120, borderBottom: "1px solid #ddd", marginBottom: "0.5rem" }}>
       {data.map((d) => (
@@ -395,8 +402,7 @@ function MonthlyTrendChart({ siteId, data }: { siteId: string; data: MonthlyTren
           <div
             style={{
               width: 20,
-              height: `${(d.pageviews / max) * 100}%`,
-              minHeight: d.pageviews > 0 ? 2 : 0,
+              height: Math.max(Math.round((d.pageviews / max) * BAR_AREA_PX), d.pageviews > 0 ? 2 : 0),
               background: "#4f46e5",
               borderRadius: "2px 2px 0 0",
             }}
@@ -435,6 +441,8 @@ function MonthNav({ siteId, month }: { siteId: string; month: string }) {
 function DailyTrendChart({ siteId, data }: { siteId: string; data: DailyTrendPoint[] }) {
   if (data.length === 0) return <p style={{ color: "#999" }}>No data yet</p>;
   const max = Math.max(...data.map((d) => d.pageviews), 1);
+  // Pixel height, not a CSS percentage — see MonthlyTrendChart's comment for why.
+  const BAR_AREA_PX = 90;
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120, borderBottom: "1px solid #ddd", marginBottom: "0.5rem" }}>
       {data.map((d) => (
@@ -447,8 +455,7 @@ function DailyTrendChart({ siteId, data }: { siteId: string; data: DailyTrendPoi
           <div
             style={{
               width: 12,
-              height: `${(d.pageviews / max) * 100}%`,
-              minHeight: d.pageviews > 0 ? 2 : 0,
+              height: Math.max(Math.round((d.pageviews / max) * BAR_AREA_PX), d.pageviews > 0 ? 2 : 0),
               background: "#4f46e5",
               borderRadius: "2px 2px 0 0",
             }}
