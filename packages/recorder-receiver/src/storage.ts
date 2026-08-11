@@ -94,5 +94,26 @@ export async function readSession(
   }
 
   batches.sort((a, b) => a.seq - b.seq);
-  return { events: batches.flatMap((b) => b.events) };
+  const events = batches.flatMap((b) => b.events);
+
+  // `seq` is per-page-load, not per-session (see recorder-entry.ts): it
+  // resets to 0 every time the recorder chunk re-initializes, which happens
+  // on every pageview within a multi-page session. A session spanning two
+  // page loads produces two independent 0,1,2,... sequences in the same
+  // file, so sorting by `seq` alone interleaves them (both "seq 0" batches
+  // land next to each other) instead of preserving true chronological
+  // order — confirmed in production as a replay that appeared to reset
+  // mid-playback. Each individual rrweb event carries its own absolute
+  // `timestamp`, which is the only value that's actually comparable across
+  // page loads; sort on that as the final pass. Stable sort preserves the
+  // already-correct seq-based order for events sharing a timestamp (or
+  // lacking one, e.g. in tests), so this doesn't disturb the resolution
+  // within a single page's own batch sequence.
+  events.sort((a, b) => {
+    const at = typeof (a as { timestamp?: unknown })?.timestamp === "number" ? (a as { timestamp: number }).timestamp : 0;
+    const bt = typeof (b as { timestamp?: unknown })?.timestamp === "number" ? (b as { timestamp: number }).timestamp : 0;
+    return at - bt;
+  });
+
+  return { events };
 }

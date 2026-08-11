@@ -53,6 +53,21 @@ describe("appendBatch / readSession", () => {
     expect(session).toBeNull();
   });
 
+  it("orders events by timestamp, not by per-page-load seq, across multiple page loads", async () => {
+    // Regression test: `seq` resets to 0 on every page load within a
+    // session (see recorder-entry.ts), so a multi-page session produces two
+    // independent 0,1,2,... sequences in the same file. Sorting by `seq`
+    // alone would interleave them (both "seq 0" batches land together)
+    // instead of preserving true chronological order.
+    await appendBatch(dataDir, "site-a", "session-1", { seq: 0, events: [{ timestamp: 100 }] }, 1024 * 1024); // page 1
+    await appendBatch(dataDir, "site-a", "session-1", { seq: 1, events: [{ timestamp: 200 }] }, 1024 * 1024); // page 1
+    await appendBatch(dataDir, "site-a", "session-1", { seq: 0, events: [{ timestamp: 300 }] }, 1024 * 1024); // page 2 (seq reset)
+    await appendBatch(dataDir, "site-a", "session-1", { seq: 1, events: [{ timestamp: 400 }] }, 1024 * 1024); // page 2
+
+    const session = await readSession(dataDir, "site-a", "session-1");
+    expect(session?.events).toEqual([{ timestamp: 100 }, { timestamp: 200 }, { timestamp: 300 }, { timestamp: 400 }]);
+  });
+
   it("keeps different sessions in separate files", async () => {
     await appendBatch(dataDir, "site-a", "session-1", { seq: 0, events: ["one"] }, 1024 * 1024);
     await appendBatch(dataDir, "site-a", "session-2", { seq: 0, events: ["two"] }, 1024 * 1024);
