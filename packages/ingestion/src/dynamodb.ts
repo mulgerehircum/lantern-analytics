@@ -70,13 +70,14 @@ export async function putSessionRecordingMeta(meta: SessionRecordingMeta): Promi
         SK: `SESSION#${meta.startedAt}#${meta.sessionId}`,
       },
       UpdateExpression:
-        "SET sessionId = :sessionId, durationMs = :durationMs, pageCount = :pageCount, storageRef = :storageRef, " +
+        "SET sessionId = :sessionId, startedAt = :startedAt, durationMs = :durationMs, pageCount = :pageCount, storageRef = :storageRef, " +
         "country = :country, device = :device, visitorHash = :visitorHash, " +
         "#path = if_not_exists(#path, :path), referrer = if_not_exists(referrer, :referrer)",
       // "path" is a reserved word in DynamoDB's expression grammar.
       ExpressionAttributeNames: { "#path": "path" },
       ExpressionAttributeValues: {
         ":sessionId": meta.sessionId,
+        ":startedAt": meta.startedAt,
         ":durationMs": meta.durationMs,
         ":pageCount": meta.pageCount,
         ":storageRef": meta.storageRef,
