@@ -34,7 +34,10 @@ export function HourBar({
   const [label, setLabel] = useState(hour);
 
   useEffect(() => {
-    setLabel(new Date(hour).toLocaleString());
+    // dateStyle/timeStyle "short", not the bare toLocaleString() default —
+    // an hour bucket always lands exactly on the hour, so the default's
+    // seconds are always a redundant ":00".
+    setLabel(new Date(hour).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }));
   }, [hour]);
 
   const bar = (

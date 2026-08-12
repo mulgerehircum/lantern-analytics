@@ -22,7 +22,10 @@ export function HourNav({ siteId, hour }: { siteId: string; hour: string }) {
   const [labels, setLabels] = useState<{ prev: string; current: string; next: string } | null>(null);
 
   useEffect(() => {
-    const toLocal = (h: string) => new Date(`${h}:00:00.000Z`).toLocaleString();
+    // dateStyle/timeStyle "short" — an hour bucket always lands exactly on
+    // the hour, so the bare toLocaleString() default's seconds are always a
+    // redundant ":00".
+    const toLocal = (h: string) => new Date(`${h}:00:00.000Z`).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
     setLabels({ prev: toLocal(prev), current: toLocal(hour), next: toLocal(next) });
   }, [hour, prev, next]);
 
