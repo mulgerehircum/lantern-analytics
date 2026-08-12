@@ -373,6 +373,7 @@ function CountryLabel({ code }: { code: string }) {
 function TimeSeriesChart({ siteId, data }: { siteId: string; data: Array<{ hour: string; pageviews: number }> }) {
   if (data.length === 0) return <p style={{ color: "#999" }}>No data yet</p>;
   const max = Math.max(...data.map((d) => d.pageviews), 1);
+  const BAR_AREA_PX = 120;
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120, borderBottom: "1px solid #ddd" }}>
       {data.map((d) => (
@@ -380,7 +381,7 @@ function TimeSeriesChart({ siteId, data }: { siteId: string; data: Array<{ hour:
           key={d.hour}
           hour={d.hour}
           pageviews={d.pageviews}
-          heightPct={(d.pageviews / max) * 100}
+          heightPx={Math.round((d.pageviews / max) * BAR_AREA_PX)}
           // Every bar corresponds to exactly one real hour regardless of the
           // current zoom level (all-time/month/day) — d.hour is already a
           // full ISO timestamp; slice(0, 13) gives the "YYYY-MM-DDTHH" shape

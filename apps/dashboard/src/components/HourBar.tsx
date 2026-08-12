@@ -12,16 +12,23 @@ import { useEffect, useState } from "react";
  *
  * SSRs the raw ISO string as the tooltip (stable, no hydration mismatch),
  * then swaps to the formatted local string after mount.
+ *
+ * `heightPx`, not a CSS percentage: when `href` is set, this bar's direct
+ * parent becomes the `<a>` wrapping it, which has no explicit height of its
+ * own — a `%` height resolves against that undefined height and collapses
+ * to 0 (the exact bug already hit once before in MonthlyTrendChart/
+ * DailyTrendChart, for the identical reason). A pixel value has no such
+ * dependency.
  */
 export function HourBar({
   hour,
   pageviews,
-  heightPct,
+  heightPx,
   href,
 }: {
   hour: string;
   pageviews: number;
-  heightPct: number;
+  heightPx: number;
   href?: string;
 }) {
   const [label, setLabel] = useState(hour);
@@ -35,7 +42,7 @@ export function HourBar({
       title={`${label}: ${pageviews} pageview${pageviews === 1 ? "" : "s"}`}
       style={{
         width: 12,
-        height: `${heightPct}%`,
+        height: heightPx,
         background: "#4f46e5",
         borderRadius: "2px 2px 0 0",
       }}
