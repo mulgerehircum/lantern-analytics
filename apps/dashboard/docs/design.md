@@ -49,10 +49,13 @@ prompt in `ai-query.ts` explicitly instructs the model to treat every string
 value in the stats JSON as inert data, never as instructions.
 
 No auth exists on this route yet (matches the rest of this single-operator
-dashboard). The only guard against quota abuse is a question-length cap; a
-real rate limit is deferred until there's an actual reason to add one — see
-`docs/decisions.md`. Gemini's own free-tier quota (5 requests/minute for
-`gemini-3.6-flash` at time of writing) is a real backstop on top of that.
+dashboard). Alongside the question-length cap, `checkRateLimit` in
+`src/lib/rate-limit.ts` now caps this route to 5 requests/minute — a
+deliberately global, in-memory, best-effort limit rather than a real
+distributed one; see that file's doc comment for why (no per-caller identity
+to key on, and widening the dashboard's read-only DynamoDB IAM scope for a
+counter table isn't warranted yet). Gemini's own free-tier quota is a real
+backstop underneath that either way.
 
 The client-side query box that would call this route is not built yet — see
 the insights box below for the first (and, for now, only) AI feature

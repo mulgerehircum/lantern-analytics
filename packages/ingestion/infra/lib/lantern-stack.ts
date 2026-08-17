@@ -128,6 +128,22 @@ export class LanternStack extends Stack {
       ),
     });
 
+    // Stage-wide throttling — the public ingest endpoint has no auth (any
+    // site's tracker script can post here) and no per-caller identity to key
+    // a usage plan on, so this is a single blunt cap rather than per-client
+    // limits. HTTP APIs (unlike REST APIs) don't support usage plans/API
+    // keys at all, so `defaultRouteSettings` on the stage is the only lever
+    // — the L2 HttpStage construct doesn't expose it, hence the escape hatch
+    // down to the underlying CfnStage. Sized well above realistic multi-visitor
+    // traffic (a pageview + a handful of custom events per visit, a metadata
+    // heartbeat at most every ~30s per active session — see recorder-entry.ts)
+    // and well below what a scripted flood would send.
+    const defaultStage = httpApi.defaultStage!.node.defaultChild as apigwv2.CfnStage;
+    defaultStage.defaultRouteSettings = {
+      throttlingRateLimit: 20,
+      throttlingBurstLimit: 40,
+    };
+
     new events.Rule(this, "RollupSchedule", {
       schedule: events.Schedule.rate(Duration.hours(1)),
       targets: [new targets.LambdaFunction(rollupFn)],

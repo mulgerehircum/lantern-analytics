@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getHourlyRollups } from "@/lib/dynamodb";
 import { summarizeRollups } from "@/lib/summarize";
 import { askQuestion } from "@/lib/ai-query";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const MAX_QUESTION_LENGTH = 300;
 
@@ -42,6 +43,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json({ error: "AI query interface is not configured" }, { status: 503 });
+  }
+
+  // Gated here, not earlier: only requests that actually reach Gemini should
+  // count against the shared quota — a malformed/oversized request already
+  // failed validation above without spending a slot.
+  const rateLimit = checkRateLimit();
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many AI queries right now, try again shortly" },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } },
+    );
   }
 
   const rollups = await getHourlyRollups(siteId, monthPrefix);
