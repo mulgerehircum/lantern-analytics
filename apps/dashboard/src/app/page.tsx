@@ -1,6 +1,10 @@
+import { unstable_cache } from "next/cache";
 import { aggregateEvents } from "@/lib/aggregate";
 import { getHourlyRollups, getLiveRawEvents, getAllRawEvents, currentHourSK } from "@/lib/dynamodb";
-import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend } from "@/lib/summarize";
+import { getSessionRecordings } from "@/lib/sessions";
+import { getInsights } from "@/lib/ai-query";
+import type { Insight } from "@/lib/ai-query";
+import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend, summarizeSessions } from "@/lib/summarize";
 import type { DashboardSummary, MonthlyTrendPoint, DailyTrendPoint } from "@/lib/summarize";
 import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filter";
 import type { DashboardFilters } from "@/lib/filter";
@@ -76,10 +80,12 @@ export default async function DashboardPage({
   // `selectedPeriod` narrows the AGG# query to one month, day, or hour via
   // the existing SK prefix shape (undefined = today's unbounded all-time
   // query).
-  const [rollups, liveEvents] = await Promise.all([
+  const [rollups, liveEvents, sessions] = await Promise.all([
     getHourlyRollups(siteId, selectedPeriod),
     getLiveRawEvents(siteId),
+    getSessionRecordings(siteId),
   ]);
+  const sessionsSummary = summarizeSessions(sessions);
   const liveRollup = { SK: currentHourSK(), ...aggregateEvents(liveEvents) };
   // The live current-hour data only belongs in the summary when the viewed
   // range actually includes "now" — the all-time view always does, a past
@@ -114,6 +120,40 @@ export default async function DashboardPage({
     // is the finest granularity there is.
   }
   const filtered = hasActiveFilter(filters);
+
+  // AI insights are optional and best-effort: skip the call entirely for an
+  // empty view (nothing to say), and swallow any failure (GEMINI_API_KEY
+  // unset, Gemini quota/network error) so a broken AI layer never breaks the
+  // rest of the dashboard — see docs/decisions.md.
+  //
+  // Cached (stale-while-revalidate on Vercel) rather than called fresh on
+  // every render: this box fires unconditionally on every page load, which
+  // burns through Gemini's free-tier 5-requests/minute cap in a couple of
+  // reloads. Keyed on siteId + period + filter state, NOT on summary's or
+  // sessionsSummary's content — unstable_cache's key comes from keyParts
+  // plus the wrapped function's own arguments (none here; both summaries
+  // are closed over), so minor data drift within the revalidate window
+  // intentionally does not bust the cache. 1 hour matches the rollup
+  // Lambda's own EventBridge cadence (see
+  // packages/ingestion/infra/lib/lantern-stack.ts) — insights can't be
+  // meaningfully fresher than the data they're summarizing anyway.
+  // sessionsSummary is passed alongside summary — it's all-time (see
+  // summarizeSessions's comment), not scoped to selectedPeriod/filters like
+  // summary is, but it's still real signal worth folding in regardless of
+  // which period is being viewed.
+  let insights: Insight[] | null = null;
+  if (summary.totalPageviews > 0) {
+    try {
+      const getCachedInsights = unstable_cache(
+        async () => getInsights(summary, sessionsSummary),
+        ["ai-insights", siteId, selectedPeriod ?? "all-time", String(filtered)],
+        { revalidate: 3600 },
+      );
+      insights = (await getCachedInsights()).insights;
+    } catch (err) {
+      console.error("dashboard: getInsights failed", err);
+    }
+  }
 
   return (
     <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem", maxWidth: 960, margin: "0 auto" }}>
@@ -160,6 +200,8 @@ export default async function DashboardPage({
         <Stat label="Uniques (approx.)" value={summary.totalUniques} />
       </section>
 
+      {insights && <InsightsBox insights={insights} />}
+
       {monthlyTrend && (
         <>
           <p style={{ fontSize: "0.75rem", color: "#555", margin: "0 0 0.25rem" }}>Monthly trend</p>
@@ -204,6 +246,35 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div>
       <div style={{ fontSize: "2rem", fontWeight: 700 }}>{value}</div>
       <div style={{ color: "#666" }}>{label}</div>
+    </div>
+  );
+}
+
+/**
+ * Server-rendered, no client JS — see docs/design.md's Phase 3 section.
+ * `insights` is already-generated observation+action pairs from
+ * getInsights(); this component only lays them out.
+ */
+function InsightsBox({ insights }: { insights: Insight[] }) {
+  return (
+    <div
+      style={{
+        border: "1px solid #ddd",
+        borderRadius: 8,
+        padding: "1rem",
+        margin: "0 0 1.5rem",
+        background: "#f8f7ff",
+      }}
+    >
+      <h3 style={{ margin: "0 0 0.5rem", fontSize: "0.85rem", color: "#4f46e5" }}>AI Insights</h3>
+      <ul style={{ margin: 0, paddingLeft: "1.25rem", listStyle: "none" }}>
+        {insights.map((insight, i) => (
+          <li key={i} style={{ marginBottom: "0.75rem" }}>
+            <div>{insight.observation}</div>
+            <div style={{ color: "#4f46e5", fontSize: "0.85rem", marginTop: 2 }}>→ {insight.action}</div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

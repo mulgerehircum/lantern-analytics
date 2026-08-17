@@ -62,5 +62,5 @@ lantern-analytics/
 
 ## Status
 
-Scaffolding only — no implementation yet. Starting with the tracking script and
-ingestion endpoint (Phase 1).
+Phase 1 (tracking script, ingestion, dashboard MVP) and Phase 2 (session
+recording) are implemented. Phase 3 (AI query interface) is in progress.

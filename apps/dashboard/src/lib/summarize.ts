@@ -1,4 +1,5 @@
 import type { HourlyRollupItem } from "./dynamodb";
+import type { SessionRecordingItem } from "./sessions";
 
 export interface DashboardSummary {
   totalPageviews: number;
@@ -167,4 +168,63 @@ export function summarizeDailyTrend(rollups: HourlyRollupItem[]): DailyTrendPoin
   return [...groupBySkPrefix(rollups, 10).entries()]
     .map(([day, totals]) => ({ day, ...totals }))
     .sort((a, b) => a.day.localeCompare(b.day));
+}
+
+export interface SessionsSummary {
+  sessionCount: number;
+  avgDurationSeconds: number;
+  avgPageCount: number;
+  /** Percentage (0-100) of sessions that viewed only 1 page. */
+  bounceRatePercent: number;
+  longestDurationSeconds: number;
+  topLandingPages: Array<{ path: string; count: number }>;
+}
+
+/**
+ * Aggregate-only summary of session recordings — never per-session detail
+ * (no visitorHash, no per-session path sequence, no storageRef). Feeds the
+ * AI insights layer with real on-site behavior (how long people stay, how
+ * deep they go, where they land) that pageview/rollup counts alone can't
+ * show. See docs/design.md's Phase 3 section.
+ *
+ * Unlike summarizeRollups, this has no period-scoping input — sessions come
+ * from getSessionRecordings(siteId), which returns all-time data (see that
+ * function's comment); the AI insights caller may be viewing a narrower
+ * period than this summary covers.
+ */
+export function summarizeSessions(sessions: SessionRecordingItem[]): SessionsSummary {
+  if (sessions.length === 0) {
+    return {
+      sessionCount: 0,
+      avgDurationSeconds: 0,
+      avgPageCount: 0,
+      bounceRatePercent: 0,
+      longestDurationSeconds: 0,
+      topLandingPages: [],
+    };
+  }
+
+  const totalDurationMs = sessions.reduce((sum, s) => sum + s.durationMs, 0);
+  const totalPageCount = sessions.reduce((sum, s) => sum + s.pageCount, 0);
+  const bounces = sessions.filter((s) => s.pageCount <= 1).length;
+  const longestDurationMs = Math.max(...sessions.map((s) => s.durationMs));
+
+  const landingPageCounts: Record<string, number> = {};
+  for (const s of sessions) {
+    if (!s.path) continue;
+    landingPageCounts[s.path] = (landingPageCounts[s.path] ?? 0) + 1;
+  }
+  const topLandingPages = Object.entries(landingPageCounts)
+    .map(([path, count]) => ({ path, count }))
+    .sort((a, b) => b.count - a.count || a.path.localeCompare(b.path))
+    .slice(0, 5);
+
+  return {
+    sessionCount: sessions.length,
+    avgDurationSeconds: Math.round(totalDurationMs / sessions.length / 1000),
+    avgPageCount: Math.round((totalPageCount / sessions.length) * 10) / 10,
+    bounceRatePercent: Math.round((bounces / sessions.length) * 100),
+    longestDurationSeconds: Math.round(longestDurationMs / 1000),
+    topLandingPages,
+  };
 }

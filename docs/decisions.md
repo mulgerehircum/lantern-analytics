@@ -26,3 +26,12 @@ security risk. A tunnel avoids opening inbound ports entirely.
 The pitch is "privacy-first." Session recording input masking (passwords, sensitive
 fields) must be on by default — PostHog's own default — or the positioning is
 self-contradicting on the riskiest feature.
+
+## Why direct Gemini API calls, not Firebase AI Logic
+Firebase AI Logic was considered for the Phase 3 AI query layer since it
+wraps Gemini with less client-side plumbing. Rejected: the AI call is already
+server-side (Next.js route handler), so Firebase's main value — hiding an API
+key from a browser — is moot here. Adding it would mean a whole new
+Google-stack dependency (Firebase project, SDK, its own auth model) for zero
+benefit over calling `@google/genai` directly with a server-only
+`GEMINI_API_KEY`.

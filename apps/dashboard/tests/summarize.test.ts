@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend } from "../src/lib/summarize";
+import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend, summarizeSessions } from "../src/lib/summarize";
 import type { HourlyRollupItem } from "../src/lib/dynamodb";
+import type { SessionRecordingItem } from "../src/lib/sessions";
 
 function rollup(overrides: Partial<HourlyRollupItem> = {}): HourlyRollupItem {
   return {
@@ -11,6 +12,17 @@ function rollup(overrides: Partial<HourlyRollupItem> = {}): HourlyRollupItem {
     referrers: {},
     countries: {},
     devices: {},
+    ...overrides,
+  };
+}
+
+function session(overrides: Partial<SessionRecordingItem> = {}): SessionRecordingItem {
+  return {
+    sessionId: "s1",
+    startedAt: "2026-08-08T11:00:00.000Z",
+    durationMs: 0,
+    pageCount: 1,
+    storageRef: "ref1",
     ...overrides,
   };
 }
@@ -163,5 +175,69 @@ describe("summarizeDailyTrend", () => {
       rollup({ SK: "AGG#2026-08-12#00", pageviews: 1, uniques: 1 }),
     ]);
     expect(result.map((r) => r.day)).toEqual(["2026-08-05", "2026-08-12", "2026-08-20"]);
+  });
+});
+
+describe("summarizeSessions", () => {
+  it("returns a zeroed-out summary for no sessions", () => {
+    expect(summarizeSessions([])).toEqual({
+      sessionCount: 0,
+      avgDurationSeconds: 0,
+      avgPageCount: 0,
+      bounceRatePercent: 0,
+      longestDurationSeconds: 0,
+      topLandingPages: [],
+    });
+  });
+
+  it("averages duration and page count across sessions", () => {
+    const result = summarizeSessions([
+      session({ durationMs: 10_000, pageCount: 2 }),
+      session({ durationMs: 30_000, pageCount: 4 }),
+    ]);
+    expect(result.sessionCount).toBe(2);
+    expect(result.avgDurationSeconds).toBe(20);
+    expect(result.avgPageCount).toBe(3);
+  });
+
+  it("computes bounce rate as the percentage of 1-page sessions", () => {
+    const result = summarizeSessions([
+      session({ pageCount: 1 }),
+      session({ pageCount: 1 }),
+      session({ pageCount: 1 }),
+      session({ pageCount: 5 }),
+    ]);
+    expect(result.bounceRatePercent).toBe(75);
+  });
+
+  it("reports the longest single session's duration", () => {
+    const result = summarizeSessions([
+      session({ durationMs: 5_000 }),
+      session({ durationMs: 120_000 }),
+      session({ durationMs: 15_000 }),
+    ]);
+    expect(result.longestDurationSeconds).toBe(120);
+  });
+
+  it("counts landing pages and sorts descending by count", () => {
+    const result = summarizeSessions([
+      session({ path: "/" }),
+      session({ path: "/" }),
+      session({ path: "/projects" }),
+    ]);
+    expect(result.topLandingPages).toEqual([
+      { path: "/", count: 2 },
+      { path: "/projects", count: 1 },
+    ]);
+  });
+
+  it("skips sessions with no landing path rather than counting them as an empty-string page", () => {
+    const result = summarizeSessions([session({ path: undefined }), session({ path: "/" })]);
+    expect(result.topLandingPages).toEqual([{ path: "/", count: 1 }]);
+  });
+
+  it("caps landing pages at the top 5", () => {
+    const sessions = Array.from({ length: 8 }, (_, i) => session({ path: `/page-${i}` }));
+    expect(summarizeSessions(sessions).topLandingPages).toHaveLength(5);
   });
 });
