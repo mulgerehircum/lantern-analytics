@@ -174,6 +174,10 @@ export default async function DashboardPage({
         <a href={`/sessions?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", fontWeight: 400, color: "#4f46e5" }}>
           Sessions
         </a>
+        {" · "}
+        <a href={`/experiments?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", fontWeight: 400, color: "#4f46e5" }}>
+          Experiments
+        </a>
       </h1>
       {!filtered && liveEvents.length > 0 && (
         <p style={{ color: "#4f46e5", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>

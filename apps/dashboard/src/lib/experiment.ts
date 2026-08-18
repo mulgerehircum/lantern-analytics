@@ -1,0 +1,155 @@
+import type { RawEventRecordWithKey } from "./dynamodb";
+import type { SessionRecordingItem } from "./sessions";
+
+/**
+ * Summarizes the portfolio's live-iframe-vs-video card experiment (see
+ * my-portfolio's utils/experiment.ts) from raw events. Rollups can't answer
+ * this — eventDimensions flattens project_title and variant into separate
+ * per-key breakdowns, losing the join between "this impression/click was for
+ * project X under variant Y" — so this reads card_variant_view (impression)
+ * and project_link_click (click) EVENT# items directly. Same ~30-day
+ * raw-event TTL coverage limit as the dashboard's dimension filters.
+ */
+
+export interface ExperimentVariantStats {
+  variant: string;
+  impressions: number;
+  liveClicks: number;
+  githubClicks: number;
+  /** liveClicks / impressions, as a percentage rounded to 1 decimal. */
+  ctrPercent: number;
+}
+
+export interface ExperimentProjectStats {
+  project: string;
+  variants: ExperimentVariantStats[];
+}
+
+export interface ExperimentSummary {
+  overall: ExperimentVariantStats[];
+  byProject: ExperimentProjectStats[];
+}
+
+function buildStats(
+  impressionsByVariant: Record<string, number>,
+  liveClicksByVariant: Record<string, number>,
+  githubClicksByVariant: Record<string, number>,
+): ExperimentVariantStats[] {
+  const variants = new Set([
+    ...Object.keys(impressionsByVariant),
+    ...Object.keys(liveClicksByVariant),
+    ...Object.keys(githubClicksByVariant),
+  ]);
+  return [...variants]
+    .map((variant) => {
+      const impressions = impressionsByVariant[variant] ?? 0;
+      const liveClicks = liveClicksByVariant[variant] ?? 0;
+      const githubClicks = githubClicksByVariant[variant] ?? 0;
+      return {
+        variant,
+        impressions,
+        liveClicks,
+        githubClicks,
+        ctrPercent: impressions > 0 ? Math.round((liveClicks / impressions) * 1000) / 10 : 0,
+      };
+    })
+    .sort((a, b) => b.impressions - a.impressions || a.variant.localeCompare(b.variant));
+}
+
+/** Reads card_variant_view / project_link_click events; anything else (or missing a `variant`) is ignored. */
+export function summarizeExperiment(events: RawEventRecordWithKey[]): ExperimentSummary {
+  const overallImpressions: Record<string, number> = {};
+  const overallLiveClicks: Record<string, number> = {};
+  const overallGithubClicks: Record<string, number> = {};
+
+  const byProjectImpressions: Record<string, Record<string, number>> = {};
+  const byProjectLiveClicks: Record<string, Record<string, number>> = {};
+  const byProjectGithubClicks: Record<string, Record<string, number>> = {};
+
+  for (const event of events) {
+    const metadata = event.metadata ?? {};
+    const project = typeof metadata.project_title === "string" ? metadata.project_title : undefined;
+    const variant = typeof metadata.variant === "string" ? metadata.variant : undefined;
+    if (!variant) continue;
+
+    if (event.name === "card_variant_view") {
+      overallImpressions[variant] = (overallImpressions[variant] ?? 0) + 1;
+      if (project) {
+        const byVariant = (byProjectImpressions[project] ??= {});
+        byVariant[variant] = (byVariant[variant] ?? 0) + 1;
+      }
+    } else if (event.name === "project_link_click") {
+      const isGithub = metadata.link_type === "github";
+      const overallTarget = isGithub ? overallGithubClicks : overallLiveClicks;
+      overallTarget[variant] = (overallTarget[variant] ?? 0) + 1;
+      if (project) {
+        const byProjectTarget = isGithub ? byProjectGithubClicks : byProjectLiveClicks;
+        const byVariant = (byProjectTarget[project] ??= {});
+        byVariant[variant] = (byVariant[variant] ?? 0) + 1;
+      }
+    }
+  }
+
+  const projects = new Set([
+    ...Object.keys(byProjectImpressions),
+    ...Object.keys(byProjectLiveClicks),
+    ...Object.keys(byProjectGithubClicks),
+  ]);
+
+  return {
+    overall: buildStats(overallImpressions, overallLiveClicks, overallGithubClicks),
+    byProject: [...projects].sort((a, b) => a.localeCompare(b)).map((project) => ({
+      project,
+      variants: buildStats(
+        byProjectImpressions[project] ?? {},
+        byProjectLiveClicks[project] ?? {},
+        byProjectGithubClicks[project] ?? {},
+      ),
+    })),
+  };
+}
+
+/** "EVENT#2026-08-08T14:32:10Z#f8e2c1" -> epoch ms of "2026-08-08T14:32:10Z". */
+function parseEventTimestamp(sk: string): number | null {
+  const part = sk.split("#")[1];
+  if (!part) return null;
+  const ms = Date.parse(part);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+// Impressions fire on card mount, which should land inside the session's own
+// window, but clock skew between client send and server receive plus queued/
+// batched delivery can push it slightly outside — tolerate a few minutes on
+// either edge rather than requiring an exact bound.
+const VARIANT_MATCH_TOLERANCE_MS = 5 * 60 * 1000;
+
+/**
+ * Attaches each session's experiment variant (if any) by matching its
+ * visitorHash against card_variant_view impressions that fall within the
+ * session's time window. Sessions with no matching impression (visitor never
+ * saw an experiment-eligible card, session predates the experiment, or the
+ * raw event has already expired past its TTL) get no `variant` field —
+ * distinct from a session that saw the "video" variant, so callers can
+ * render "—" rather than mislabel it.
+ */
+export function attachVariantToSessions(
+  sessions: SessionRecordingItem[],
+  events: RawEventRecordWithKey[],
+): Array<SessionRecordingItem & { variant?: string }> {
+  const impressions = events.filter((e) => e.name === "card_variant_view" && typeof e.metadata?.variant === "string");
+
+  return sessions.map((session) => {
+    if (!session.visitorHash) return session;
+    const sessionStart = Date.parse(session.startedAt);
+    if (Number.isNaN(sessionStart)) return session;
+    const sessionEnd = sessionStart + session.durationMs;
+
+    const match = impressions.find((e) => {
+      if (e.visitorHash !== session.visitorHash) return false;
+      const ts = parseEventTimestamp(e.SK);
+      return ts !== null && ts >= sessionStart - VARIANT_MATCH_TOLERANCE_MS && ts <= sessionEnd + VARIANT_MATCH_TOLERANCE_MS;
+    });
+
+    return match ? { ...session, variant: match.metadata!.variant as string } : session;
+  });
+}
