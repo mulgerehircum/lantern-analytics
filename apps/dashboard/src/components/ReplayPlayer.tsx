@@ -44,11 +44,18 @@ export function ReplayPlayer({ siteId, sessionId }: { siteId: string; sessionId:
         // rendered box 1000×680, ~1.47:1) never matched the container's
         // aspect-ratio — the fixed-size player just got silently clipped.
         // Sizing to the actual available width up front (capped at 1000, no
-        // point upscaling past the original) avoids the mismatch entirely;
-        // a block-level empty div's width already equals its parent's
-        // content width per normal CSS flow, so this is accurate even
-        // though nothing has been rendered into it yet.
-        const width = Math.min(containerRef.current.clientWidth || 1000, 1000);
+        // point upscaling past the original) avoids the mismatch entirely.
+        //
+        // Measure the PARENT's width, not containerRef.current's own —
+        // containerRef.current is `display: none` for the entire "loading"
+        // state (it only flips to "block" once status becomes "ready",
+        // which happens *after* this measurement), and a display:none
+        // element's clientWidth is always 0 regardless of its would-be
+        // layout width. That 0 silently tripped the `|| 1000` fallback
+        // every time, defeating the whole fix. The parent (ReplayPlayer's
+        // own root <div>) is never conditionally hidden, so it reliably
+        // reflects the real available width.
+        const width = Math.min(containerRef.current.parentElement?.clientWidth || 1000, 1000);
         const height = Math.round(width * 0.6);
 
         containerRef.current.innerHTML = "";
