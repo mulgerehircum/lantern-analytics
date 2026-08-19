@@ -55,9 +55,9 @@ export default async function EventsPage({
         All-time custom event totals. Click an event (or a metadata breakdown row) to filter the Overview
         dashboard down to just that.
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-        <DataTableCard title="Custom events" rows={eventRows} initialVisibleCount={10} />
-        <DataTableCard title="Custom event details" rows={detailRows} initialVisibleCount={10} />
+      <div className="lantern-grid-2" style={{ display: "grid", gap: "1.25rem" }}>
+        <DataTableCard title="Custom events" rows={eventRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-events.csv`} />
+        <DataTableCard title="Custom event details" rows={detailRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-event-details.csv`} />
       </div>
     </AppShell>
   );

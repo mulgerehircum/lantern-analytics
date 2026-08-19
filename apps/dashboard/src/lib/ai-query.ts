@@ -8,6 +8,9 @@ import type { DashboardSummary, SessionsSummary } from "./summarize";
 // so it isn't affected by 3.6-flash's daily cap being exhausted.
 const MODEL = "gemini-3.5-flash-lite";
 
+/** Shared by the API route (server-side enforcement) and AiQueryBox (client-side pre-validation, before spending a rate-limit slot). */
+export const MAX_QUESTION_LENGTH = 300;
+
 export const SYSTEM_PROMPT = `You are an analytics assistant answering questions about ONE website's traffic statistics for its owner.
 
 You will be given a JSON object of aggregate stats and a question about it. Answer using ONLY the numbers and strings in that JSON — do not invent pages, referrers, countries, or events that aren't present in it.

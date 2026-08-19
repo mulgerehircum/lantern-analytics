@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHourlyRollups } from "@/lib/dynamodb";
 import { summarizeRollups } from "@/lib/summarize";
-import { askQuestion } from "@/lib/ai-query";
+import { askQuestion, MAX_QUESTION_LENGTH } from "@/lib/ai-query";
 import { checkRateLimit } from "@/lib/rate-limit";
-
-const MAX_QUESTION_LENGTH = 300;
 
 interface AiQueryRequestBody {
   siteId?: string;

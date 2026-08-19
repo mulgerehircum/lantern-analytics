@@ -124,6 +124,25 @@ export function summarizeRollups(rollups: HourlyRollupItem[]): DashboardSummary 
   };
 }
 
+export interface PeriodComparison {
+  /** null when the previous period had 0 — a percent change from zero isn't meaningful (would be Infinity/NaN). */
+  pageviewsDeltaPercent: number | null;
+  uniquesDeltaPercent: number | null;
+}
+
+function deltaPercent(current: number, previous: number): number | null {
+  if (previous === 0) return null;
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+/** Percent change vs. the immediately preceding equivalent period (e.g. this month vs. last month). */
+export function computePeriodComparison(current: DashboardSummary, previous: DashboardSummary): PeriodComparison {
+  return {
+    pageviewsDeltaPercent: deltaPercent(current.totalPageviews, previous.totalPageviews),
+    uniquesDeltaPercent: deltaPercent(current.totalUniques, previous.totalUniques),
+  };
+}
+
 export interface MonthlyTrendPoint {
   month: string; // "YYYY-MM"
   pageviews: number;

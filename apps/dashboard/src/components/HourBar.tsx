@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { theme } from "@/lib/theme";
 
 /**
@@ -53,5 +54,5 @@ export function HourBar({
     />
   );
 
-  return href ? <a href={href}>{bar}</a> : bar;
+  return href ? <Link href={href}>{bar}</Link> : bar;
 }

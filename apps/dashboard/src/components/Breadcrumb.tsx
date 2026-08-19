@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { theme } from "@/lib/theme";
 import { formatDayLabel, formatMonthLabel, parentDay, parentMonth } from "@/lib/months";
 
@@ -51,9 +52,10 @@ export function Breadcrumb({
           </span>
         ) : (
           <span key={seg.label} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <a href={seg.href} style={{ color: theme.color.textMuted, textDecoration: "none" }}>
+            {/* seg.href is always defined here — only the last segment (handled above) ever omits it */}
+            <Link href={seg.href!} style={{ color: theme.color.textMuted, textDecoration: "none" }}>
               {seg.label}
-            </a>
+            </Link>
             <span style={{ color: theme.color.textMuted }}>›</span>
           </span>
         ),

@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { card, theme } from "@/lib/theme";
-import { ExpandableRows } from "./ExpandableRows";
+import { SearchableRows } from "./SearchableRows";
+import { ExportCsvButton } from "./ExportCsvButton";
+import { buildRowsCsv } from "@/lib/csv";
 
 export interface DataTableRow {
   key: string;
@@ -17,39 +20,40 @@ export interface DataTableRow {
  * caller (page.tsx) decides each row's href via lib/filter-ui.ts.
  *
  * `initialVisibleCount`, when set and rows exceed it, shows only that many
- * rows with the rest behind a "Show N more" toggle (see ExpandableRows).
+ * rows behind a "Show N more" toggle, with a search box that bypasses the
+ * cap entirely once you start typing (see SearchableRows).
+ * `exportFilename`, when set, adds a CSV-export button built from `key`/
+ * `count` only (renderKey's JSX, e.g. Countries' flag icon, has no CSV use —
+ * the raw key string is the correct cell value regardless).
  */
 export function DataTableCard({
   title,
   rows,
   initialVisibleCount,
+  exportFilename,
 }: {
   title: string;
   rows: readonly DataTableRow[];
   initialVisibleCount?: number;
+  exportFilename?: string;
 }) {
-  const collapsible = initialVisibleCount !== undefined && rows.length > initialVisibleCount;
-  const visibleRows = collapsible ? rows.slice(0, initialVisibleCount) : rows;
-  const hiddenRows = collapsible ? rows.slice(initialVisibleCount) : [];
+  const searchable = initialVisibleCount !== undefined && rows.length > initialVisibleCount;
 
   return (
     <div style={card}>
-      <div style={{ fontWeight: theme.font.weight.semibold, marginBottom: "0.7rem", fontSize: "0.85rem" }}>{title}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.7rem" }}>
+        <div style={{ fontWeight: theme.font.weight.semibold, fontSize: "0.85rem" }}>{title}</div>
+        {exportFilename && rows.length > 0 && <ExportCsvButton csv={buildRowsCsv(rows)} filename={exportFilename} />}
+      </div>
       {rows.length === 0 ? (
-        <p style={{ color: "#999", fontSize: "0.82rem", margin: 0 }}>No data yet</p>
+        <p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>No data yet</p>
+      ) : searchable ? (
+        <SearchableRows
+          rows={rows.map((row) => ({ key: row.key, node: <Row key={row.key} row={row} /> }))}
+          initialVisibleCount={initialVisibleCount!}
+        />
       ) : (
-        <>
-          {visibleRows.map((row) => (
-            <Row key={row.key} row={row} />
-          ))}
-          {collapsible && (
-            <ExpandableRows count={hiddenRows.length}>
-              {hiddenRows.map((row) => (
-                <Row key={row.key} row={row} />
-              ))}
-            </ExpandableRows>
-          )}
-        </>
+        rows.map((row) => <Row key={row.key} row={row} />)
       )}
     </div>
   );
@@ -78,9 +82,9 @@ export function Row({ row }: { row: DataTableRow }) {
   );
 
   return row.href ? (
-    <a href={row.href} style={rowStyle}>
+    <Link href={row.href} style={rowStyle}>
       {content}
-    </a>
+    </Link>
   ) : (
     <div style={rowStyle}>{content}</div>
   );

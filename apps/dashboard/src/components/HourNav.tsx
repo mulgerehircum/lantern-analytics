@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { theme } from "@/lib/theme";
 import { shiftHour, formatHourLabel } from "@/lib/months";
 
@@ -32,12 +33,12 @@ export function HourNav({ siteId, hour }: { siteId: string; hour: string }) {
 
   return (
     <p style={{ fontSize: "0.72rem", margin: 0, display: "flex", gap: "0.6rem", alignItems: "center" }}>
-      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={{ color: theme.color.textMutedLight, textDecoration: "none" }}>
+      <Link href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={{ color: theme.color.textMutedLight, textDecoration: "none" }}>
         ← {labels ? labels.prev : formatHourLabel(prev)}
-      </a>
-      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={{ color: theme.color.textMutedLight, textDecoration: "none" }}>
+      </Link>
+      <Link href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={{ color: theme.color.textMutedLight, textDecoration: "none" }}>
         {labels ? labels.next : formatHourLabel(next)} →
-      </a>
+      </Link>
     </p>
   );
 }

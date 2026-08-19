@@ -51,7 +51,7 @@ export default async function PagesPage({
       <p style={{ color: theme.color.textMuted, fontSize: "0.82rem", margin: "0 0 1.2rem" }}>
         All-time pageviews per path. Click a page to filter the Overview dashboard down to just that page.
       </p>
-      <DataTableCard title="All pages" rows={rows} initialVisibleCount={10} />
+      <DataTableCard title="All pages" rows={rows} initialVisibleCount={10} exportFilename={`${siteId}-pages.csv`} />
     </AppShell>
   );
 }

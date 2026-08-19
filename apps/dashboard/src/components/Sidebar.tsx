@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { theme } from "@/lib/theme";
 import { ProjectSelector } from "./ProjectSelector";
+import { ThemeToggle } from "./ThemeToggle";
 
 export type View = "overview" | "pages" | "sources" | "events" | "sessions" | "experiments";
 
@@ -30,7 +32,18 @@ export function Sidebar({
         flexShrink: 0,
         background: theme.color.sidebarBg,
         padding: "1.8rem 1.2rem",
-        minHeight: "100vh",
+        // sticky + height (not minHeight) pins the sidebar to the viewport as
+        // the page scrolls, rather than just growing to at least one
+        // viewport tall — with minHeight alone, a page taller than 100vh
+        // left the sidebar's own background stopping at the first screen
+        // (its wrapping div in MobileNav still stretched to the page's full
+        // height via flex, but nothing made *this* element fill that space
+        // or track scroll position). overflowY lets the sidebar's own
+        // content scroll independently if it ever exceeds one viewport.
+        position: "sticky",
+        top: 0,
+        height: "100vh",
+        overflowY: "auto",
         boxSizing: "border-box",
         borderRight: `1px solid ${theme.color.sidebarBorder}`,
         display: "flex",
@@ -47,7 +60,7 @@ export function Sidebar({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#fff",
+            color: theme.color.onBrand,
             fontWeight: theme.font.weight.bold,
           }}
         >
@@ -112,13 +125,14 @@ export function Sidebar({
           View live site ↗
         </a>
       )}
+      <ThemeToggle />
     </aside>
   );
 }
 
 function NavLink({ label, href, active }: { label: string; href: string; active: boolean }) {
   return (
-    <a
+    <Link
       href={href}
       style={{
         padding: "0.55rem 0.7rem 0.55rem 0.9rem",
@@ -131,7 +145,7 @@ function NavLink({ label, href, active }: { label: string; href: string; active:
       }}
     >
       {label}
-    </a>
+    </Link>
   );
 }
 

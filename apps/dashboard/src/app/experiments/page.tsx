@@ -45,7 +45,7 @@ export default async function ExperimentsPage({
         </div>
 
         {experiment.overall.length === 0 ? (
-          <p style={{ color: "#999" }}>No experiment data in the last ~30 days.</p>
+          <p style={{ color: theme.color.textFaint }}>No experiment data in the last ~30 days.</p>
         ) : (
           <>
             <VariantTable title="Overall" stats={experiment.overall} />

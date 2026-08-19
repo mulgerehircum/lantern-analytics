@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { theme } from "@/lib/theme";
 import { formatDayLabel, formatMonthLabel, shiftDay, shiftMonth } from "@/lib/months";
 
@@ -12,12 +13,12 @@ export function MonthNav({ siteId, month }: { siteId: string; month: string }) {
   const next = shiftMonth(month, 1);
   return (
     <p style={navStyle}>
-      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={navLinkStyle}>
+      <Link href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={navLinkStyle}>
         ← {formatMonthLabel(prev)}
-      </a>
-      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={navLinkStyle}>
+      </Link>
+      <Link href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={navLinkStyle}>
         {formatMonthLabel(next)} →
-      </a>
+      </Link>
     </p>
   );
 }
@@ -27,12 +28,12 @@ export function DayNav({ siteId, day }: { siteId: string; day: string }) {
   const next = shiftDay(day, 1);
   return (
     <p style={navStyle}>
-      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={navLinkStyle}>
+      <Link href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={navLinkStyle}>
         ← {formatDayLabel(prev)}
-      </a>
-      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={navLinkStyle}>
+      </Link>
+      <Link href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={navLinkStyle}>
         {formatDayLabel(next)} →
-      </a>
+      </Link>
     </p>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import "rrweb-player/dist/style.css";
+import { theme } from "@/lib/theme";
 
 /**
  * The dashboard's first client component — rrweb-player needs a real DOM
@@ -59,9 +60,9 @@ export function ReplayPlayer({ siteId, sessionId }: { siteId: string; sessionId:
   // the player is already constructed against this ref.
   return (
     <div>
-      {status === "loading" && <p style={{ color: "#999", marginTop: "1rem" }}>Loading recording…</p>}
-      {status === "empty" && <p style={{ color: "#999", marginTop: "1rem" }}>This session has no recorded events.</p>}
-      {status === "error" && <p style={{ color: "#b45309", marginTop: "1rem" }}>Failed to load the recording.</p>}
+      {status === "loading" && <p style={{ color: theme.color.textFaint, marginTop: "1rem" }}>Loading recording…</p>}
+      {status === "empty" && <p style={{ color: theme.color.textFaint, marginTop: "1rem" }}>This session has no recorded events.</p>}
+      {status === "error" && <p style={{ color: theme.color.danger, marginTop: "1rem" }}>Failed to load the recording.</p>}
       <div ref={containerRef} style={{ marginTop: "1rem", display: status === "ready" ? "block" : "none" }} />
     </div>
   );

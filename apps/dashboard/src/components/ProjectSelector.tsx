@@ -46,7 +46,7 @@ export function ProjectSelector({
             padding: "8px 10px",
             fontSize: "0.85rem",
             fontFamily: "inherit",
-            background: "#fff",
+            background: theme.color.cardBg,
             boxSizing: "border-box",
           }}
         >
@@ -67,7 +67,7 @@ export function ProjectSelector({
             border: "none",
             borderRadius: theme.radius.control,
             background: theme.color.brand,
-            color: "#fff",
+            color: theme.color.onBrand,
             cursor: "pointer",
             fontSize: "0.9rem",
           }}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getSessionRecordings } from "@/lib/sessions";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { theme, card } from "@/lib/theme";
@@ -42,12 +43,12 @@ export default async function SessionReplayPage({
       }
     >
       <div style={card}>
-        <a
+        <Link
           href={`/sessions?siteId=${encodeURIComponent(siteId)}`}
           style={{ display: "inline-block", fontSize: "0.8rem", color: theme.color.brand, textDecoration: "none", fontWeight: theme.font.weight.semibold, marginBottom: "1.1rem" }}
         >
           ← Back to sessions
-        </a>
+        </Link>
 
         {session ? (
           <>

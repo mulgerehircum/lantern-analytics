@@ -1,17 +1,19 @@
 import { unstable_cache } from "next/cache";
+import Link from "next/link";
 import { aggregateEvents } from "@/lib/aggregate";
 import { getHourlyRollups, getLiveRawEvents, getAllRawEvents, currentHourSK } from "@/lib/dynamodb";
 import { getSessionRecordings } from "@/lib/sessions";
 import { getInsights } from "@/lib/ai-query";
 import type { Insight } from "@/lib/ai-query";
-import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend, summarizeSessions } from "@/lib/summarize";
-import type { DashboardSummary, MonthlyTrendPoint, DailyTrendPoint } from "@/lib/summarize";
+import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend, summarizeSessions, computePeriodComparison } from "@/lib/summarize";
+import type { DashboardSummary, MonthlyTrendPoint, DailyTrendPoint, PeriodComparison } from "@/lib/summarize";
 import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filter";
 import type { DashboardFilters } from "@/lib/filter";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { theme, card } from "@/lib/theme";
 import { fieldStyle } from "@/components/ProjectSelector";
 import { AppShell } from "@/components/AppShell";
+import { AiQueryBox } from "@/components/AiQueryBox";
 import { ChartCard } from "@/components/ChartCard";
 import type { Chart } from "@/components/ChartCard";
 import { DataTableCard } from "@/components/DataTableCard";
@@ -23,7 +25,7 @@ import {
   isActiveEventDetailFilter,
   buildFilterChip,
 } from "@/lib/filter-ui";
-import { isDayPeriod, currentMonth, currentDay, isHourPeriod, currentHour } from "@/lib/months";
+import { isDayPeriod, currentMonth, currentDay, isHourPeriod, currentHour, shiftMonth, shiftDay, shiftHour } from "@/lib/months";
 
 /**
  * Server Component — fetches DynamoDB directly, server-side. No client-side
@@ -80,10 +82,29 @@ export default async function DashboardPage({
   // `selectedPeriod` narrows the AGG# query to one month, day, or hour via
   // the existing SK prefix shape (undefined = today's unbounded all-time
   // query).
-  const [rollups, liveEvents, sessions] = await Promise.all([
+  //
+  // Period-over-period comparison: only meaningful when a period is
+  // actually selected (no single "previous period" exists for the
+  // unbounded "all time" root — inventing one, e.g. trailing-30-vs-
+  // previous-30, would silently redefine what "all time" pageviews means
+  // elsewhere in the app) and only when not dimension-filtered (filtering
+  // bypasses selectedPeriod's scoping entirely, see lib/filter.ts, so
+  // there's no coherent "previous period" for it either). Fetched
+  // unconditionally alongside the rest — `getHourlyRollups` on an
+  // out-of-range/empty period just returns [], which computePeriodComparison
+  // already treats as "no previous data" (renders as "new", not a bogus 0%).
+  const previousPeriod = !selectedPeriod
+    ? undefined
+    : isHour
+      ? shiftHour(selectedPeriod, -1)
+      : isDay
+        ? shiftDay(selectedPeriod, -1)
+        : shiftMonth(selectedPeriod, -1);
+  const [rollups, liveEvents, sessions, previousRollups] = await Promise.all([
     getHourlyRollups(siteId, selectedPeriod),
     getLiveRawEvents(siteId),
     getSessionRecordings(siteId),
+    previousPeriod && !hasActiveFilter(filters) ? getHourlyRollups(siteId, previousPeriod) : Promise.resolve([]),
   ]);
   const sessionsSummary = summarizeSessions(sessions);
   const liveRollup = { SK: currentHourSK(), ...aggregateEvents(liveEvents) };
@@ -120,6 +141,9 @@ export default async function DashboardPage({
     // is the finest granularity there is.
   }
   const filtered = hasActiveFilter(filters);
+
+  const comparison: PeriodComparison | undefined =
+    selectedPeriod && !filtered ? computePeriodComparison(summary, summarizeRollups(previousRollups)) : undefined;
 
   // Exactly one chart per drill depth (root→monthly, month→daily,
   // day→hourly; hour is the finest granularity, no chart below it). When a
@@ -246,24 +270,33 @@ export default async function DashboardPage({
         isDay={isDay}
         isHour={isHour}
         showPeriodNav={!filtered}
+        comparison={comparison}
         chart={chart}
       />
 
       {insights && <InsightsBox insights={insights} />}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1.25rem" }}>
-        <DataTableCard title="Top pages" rows={topPageRows} initialVisibleCount={10} />
-        <DataTableCard title="Referrers" rows={referrerRows} initialVisibleCount={10} />
-        <DataTableCard title="Countries" rows={countryRows} initialVisibleCount={10} />
+      {filtered ? (
+        <p style={{ color: theme.color.textMuted, fontSize: "0.8rem", margin: "0 0 1.5rem" }}>
+          Clear the active filter to ask a question about this exact view.
+        </p>
+      ) : (
+        <AiQueryBox siteId={siteId} monthPrefix={selectedPeriod} />
+      )}
+
+      <div className="lantern-grid-3" style={{ display: "grid", gap: "1.25rem" }}>
+        <DataTableCard title="Top pages" rows={topPageRows} initialVisibleCount={10} exportFilename={`${siteId}-top-pages.csv`} />
+        <DataTableCard title="Referrers" rows={referrerRows} initialVisibleCount={10} exportFilename={`${siteId}-referrers.csv`} />
+        <DataTableCard title="Countries" rows={countryRows} initialVisibleCount={10} exportFilename={`${siteId}-countries.csv`} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1.25rem", marginTop: "1.25rem" }}>
-        <DataTableCard title="Devices" rows={deviceRows} initialVisibleCount={10} />
-        <DataTableCard title="Custom events" rows={customEventRows} initialVisibleCount={10} />
+      <div className="lantern-grid-2" style={{ display: "grid", gap: "1.25rem", marginTop: "1.25rem" }}>
+        <DataTableCard title="Devices" rows={deviceRows} initialVisibleCount={10} exportFilename={`${siteId}-devices.csv`} />
+        <DataTableCard title="Custom events" rows={customEventRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-events.csv`} />
       </div>
 
       <div style={{ marginTop: "1.25rem" }}>
-        <DataTableCard title="Custom event details" rows={customEventDetailRows} initialVisibleCount={10} />
+        <DataTableCard title="Custom event details" rows={customEventDetailRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-event-details.csv`} />
       </div>
     </AppShell>
   );
@@ -286,13 +319,13 @@ function PathFilterForm({ siteId, filters }: { siteId: string; filters: Dashboar
         placeholder="Path contains…"
         style={{ ...fieldStyle, width: 220 }}
       />
-      <button type="submit" style={{ ...fieldStyle, cursor: "pointer", background: theme.color.brand, color: "#fff", border: "none" }}>
+      <button type="submit" style={{ ...fieldStyle, cursor: "pointer", background: theme.color.brand, color: theme.color.onBrand, border: "none" }}>
         Filter
       </button>
       {filters.path && (
-        <a href={`/?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.8rem", color: theme.color.brand }}>
+        <Link href={`/?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.8rem", color: theme.color.brand }}>
           Clear
-        </a>
+        </Link>
       )}
     </form>
   );

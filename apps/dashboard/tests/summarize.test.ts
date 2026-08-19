@@ -1,7 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend, summarizeSessions } from "../src/lib/summarize";
+import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend, summarizeSessions, computePeriodComparison } from "../src/lib/summarize";
 import type { HourlyRollupItem } from "../src/lib/dynamodb";
 import type { SessionRecordingItem } from "../src/lib/sessions";
+import type { DashboardSummary } from "../src/lib/summarize";
+
+function summary(overrides: Partial<DashboardSummary> = {}): DashboardSummary {
+  return {
+    totalPageviews: 0,
+    totalUniques: 0,
+    topPages: [],
+    referrers: [],
+    countries: [],
+    devices: [],
+    timeSeries: [],
+    customEvents: [],
+    customEventBreakdown: [],
+    ...overrides,
+  };
+}
 
 function rollup(overrides: Partial<HourlyRollupItem> = {}): HourlyRollupItem {
   return {
@@ -239,5 +255,38 @@ describe("summarizeSessions", () => {
   it("caps landing pages at the top 5", () => {
     const sessions = Array.from({ length: 8 }, (_, i) => session({ path: `/page-${i}` }));
     expect(summarizeSessions(sessions).topLandingPages).toHaveLength(5);
+  });
+});
+
+describe("computePeriodComparison", () => {
+  it("returns null deltas when the previous period had zero", () => {
+    const result = computePeriodComparison(summary({ totalPageviews: 10, totalUniques: 5 }), summary());
+    expect(result).toEqual({ pageviewsDeltaPercent: null, uniquesDeltaPercent: null });
+  });
+
+  it("computes a positive delta", () => {
+    const result = computePeriodComparison(
+      summary({ totalPageviews: 150, totalUniques: 120 }),
+      summary({ totalPageviews: 100, totalUniques: 100 }),
+    );
+    expect(result).toEqual({ pageviewsDeltaPercent: 50, uniquesDeltaPercent: 20 });
+  });
+
+  it("computes a negative delta", () => {
+    const result = computePeriodComparison(
+      summary({ totalPageviews: 50, totalUniques: 80 }),
+      summary({ totalPageviews: 100, totalUniques: 100 }),
+    );
+    expect(result).toEqual({ pageviewsDeltaPercent: -50, uniquesDeltaPercent: -20 });
+  });
+
+  it("rounds to one decimal place", () => {
+    const result = computePeriodComparison(summary({ totalPageviews: 10, totalUniques: 0 }), summary({ totalPageviews: 3, totalUniques: 0 }));
+    expect(result.pageviewsDeltaPercent).toBe(233.3);
+  });
+
+  it("returns 0 (not null) when current equals previous and both are non-zero", () => {
+    const result = computePeriodComparison(summary({ totalPageviews: 10 }), summary({ totalPageviews: 10 }));
+    expect(result.pageviewsDeltaPercent).toBe(0);
   });
 });

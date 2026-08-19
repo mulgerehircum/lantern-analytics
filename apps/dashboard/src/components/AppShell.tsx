@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { theme } from "@/lib/theme";
 import { Sidebar } from "./Sidebar";
 import type { View } from "./Sidebar";
+import { MobileNav } from "./MobileNav";
 
 /**
  * Shared page shell: Sidebar + content area with a title/filter-chip header.
@@ -28,13 +30,15 @@ export function AppShell({
   children: ReactNode;
 }) {
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <Sidebar siteId={siteId} siteUrl={siteUrl} activeView={activeView} basePath={basePath} />
+    <div className="lantern-app-shell" style={{ display: "flex", minHeight: "100vh" }}>
+      <MobileNav>
+        <Sidebar siteId={siteId} siteUrl={siteUrl} activeView={activeView} basePath={basePath} />
+      </MobileNav>
       <div style={{ flex: 1, padding: "2.5rem 2.5rem 4rem", minWidth: 0 }}>
         <div style={{ marginBottom: "1.5rem" }}>
           <h1 style={{ margin: 0, fontSize: "1.4rem", fontWeight: theme.font.weight.bold }}>{title}</h1>
           {filterChip && (
-            <a
+            <Link
               href={filterChip.clearHref}
               style={{
                 display: "inline-flex",
@@ -51,7 +55,7 @@ export function AppShell({
               }}
             >
               Filtered by {filterChip.label}: {filterChip.value} ✕
-            </a>
+            </Link>
           )}
         </div>
         {children}
