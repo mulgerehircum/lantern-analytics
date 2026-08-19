@@ -2,89 +2,87 @@
 
 import { useEffect, useRef, useState } from "react";
 import "rrweb-player/dist/style.css";
-import { theme } from "@/lib/theme";
+import type RrwebPlayer from "rrweb-player";
+import type { eventWithTime } from "@rrweb/types";
 
 /**
- * The dashboard's first client component — rrweb-player needs a real DOM
- * node to attach to, so this can't be server-rendered. Fetches the recorded
- * event stream from the dashboard's own /api/recordings route (never the
- * Mac-mini receiver directly — see that route's doc comment) and hands it to
- * rrweb-player, which owns playback controls (play/pause/scrub) itself.
+ * Construction-only — rrweb-player needs a real DOM node to attach to, so
+ * this can't be server-rendered. Fetching the recording and owning
+ * loading/empty/error status lives one level up in SessionReplay.tsx, which
+ * also renders InteractionTimeline alongside this from the *same* fetched
+ * `events` — keeping the fetch here would mean either a second network
+ * round-trip or threading data back out for no reason. `onReady` hands the
+ * constructed player instance up so SessionReplay can call `.goto()` (seek
+ * deep-links) and InteractionTimeline can call `.getReplayer().getMirror()`
+ * (resolve click ids to real elements).
+ *
+ * `events` must be a referentially-stable array from the caller (set once
+ * after fetch, not recreated each render) — the mount effect depends on it,
+ * and a fresh array reference every render would spuriously reconstruct the
+ * player.
  */
-export function ReplayPlayer({ siteId, sessionId }: { siteId: string; sessionId: string }) {
+export function ReplayPlayer({
+  events,
+  onReady,
+}: {
+  events: eventWithTime[];
+  onReady?: (player: RrwebPlayer) => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<"loading" | "empty" | "error" | "ready">("loading");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
-      try {
-        const res = await fetch(`/api/recordings?siteId=${encodeURIComponent(siteId)}&sessionId=${encodeURIComponent(sessionId)}`);
-        if (!res.ok) {
-          if (!cancelled) setStatus("error");
-          return;
-        }
-        const data: { events?: unknown[] } = await res.json();
-        if (cancelled) return;
+    async function mount() {
+      const { default: RrwebPlayerCtor } = await import("rrweb-player");
+      if (cancelled || !containerRef.current) return;
 
-        if (!data.events || data.events.length === 0) {
-          setStatus("empty");
-          return;
-        }
+      // rrweb-player renders at a fixed pixel size chosen at construction
+      // time — it does not resize itself afterward. A hardcoded 1000×600
+      // used to be wrapped in a CSS `aspect-ratio` + `overflow: hidden`
+      // container to fit the design, but 1000:600 (5:3, and the player
+      // adds its own ~80px controller bar below that, making the real
+      // rendered box 1000×680, ~1.47:1) never matched the container's
+      // aspect-ratio — the fixed-size player just got silently clipped.
+      // Sizing to the actual available width up front (capped at 1000, no
+      // point upscaling past the original) avoids the mismatch entirely.
+      //
+      // Measure the PARENT's width, not containerRef.current's own —
+      // containerRef.current is `display: none` until `ready`, which only
+      // flips *after* this measurement, and a display:none element's
+      // clientWidth is always 0 regardless of its would-be layout width.
+      // That 0 silently tripped the `|| 1000` fallback every time,
+      // defeating the whole fix. The parent (this component's own root
+      // <div>) is never conditionally hidden — SessionReplay only mounts
+      // ReplayPlayer once `events` is already non-empty — so it reliably
+      // reflects the real available width.
+      const width = Math.min(containerRef.current.parentElement?.clientWidth || 1000, 1000);
+      const height = Math.round(width * 0.6);
 
-        const { default: RrwebPlayer } = await import("rrweb-player");
-        if (cancelled || !containerRef.current) return;
-
-        // rrweb-player renders at a fixed pixel size chosen at construction
-        // time — it does not resize itself afterward. A hardcoded 1000×600
-        // used to be wrapped in a CSS `aspect-ratio` + `overflow: hidden`
-        // container to fit the design, but 1000:600 (5:3, and the player
-        // adds its own ~80px controller bar below that, making the real
-        // rendered box 1000×680, ~1.47:1) never matched the container's
-        // aspect-ratio — the fixed-size player just got silently clipped.
-        // Sizing to the actual available width up front (capped at 1000, no
-        // point upscaling past the original) avoids the mismatch entirely.
-        //
-        // Measure the PARENT's width, not containerRef.current's own —
-        // containerRef.current is `display: none` for the entire "loading"
-        // state (it only flips to "block" once status becomes "ready",
-        // which happens *after* this measurement), and a display:none
-        // element's clientWidth is always 0 regardless of its would-be
-        // layout width. That 0 silently tripped the `|| 1000` fallback
-        // every time, defeating the whole fix. The parent (ReplayPlayer's
-        // own root <div>) is never conditionally hidden, so it reliably
-        // reflects the real available width.
-        const width = Math.min(containerRef.current.parentElement?.clientWidth || 1000, 1000);
-        const height = Math.round(width * 0.6);
-
-        containerRef.current.innerHTML = "";
-        new RrwebPlayer({
-          target: containerRef.current,
-          props: { events: data.events, width, height },
-        });
-        setStatus("ready");
-      } catch {
-        if (!cancelled) setStatus("error");
-      }
+      containerRef.current.innerHTML = "";
+      const player = new RrwebPlayerCtor({
+        target: containerRef.current,
+        props: { events, width, height },
+      });
+      setReady(true);
+      onReady?.(player);
     }
 
-    void load();
+    void mount();
     return () => {
       cancelled = true;
     };
-  }, [siteId, sessionId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events]);
 
   // The container div is always mounted (never conditionally omitted) so
   // `containerRef.current` is already a real DOM node by the time the async
-  // load() above tries to attach the player to it — attaching only once
-  // status flips to "ready" would be too late, since that flip happens after
-  // the player is already constructed against this ref.
+  // mount() above tries to attach the player to it — attaching only once
+  // `ready` flips would be too late, since that flip happens after the
+  // player is already constructed against this ref.
   return (
     <div>
-      {status === "loading" && <p style={{ color: theme.color.textFaint, marginTop: "1rem" }}>Loading recording…</p>}
-      {status === "empty" && <p style={{ color: theme.color.textFaint, marginTop: "1rem" }}>This session has no recorded events.</p>}
-      {status === "error" && <p style={{ color: theme.color.danger, marginTop: "1rem" }}>Failed to load the recording.</p>}
       {/* rrweb-player's own bundled CSS floats .rr-player (`float: left`) —
           harmless on its own demo page, but a floated child is removed from
           normal flow for its parent's height calculation, so an un-cleared
@@ -99,7 +97,7 @@ export function ReplayPlayer({ siteId, sessionId }: { siteId: string; sessionId:
           scrollbar appears only once the player is inserted) — flex
           centering makes any such small mismatch symmetric and invisible
           instead of all the slack landing on one side. */}
-      <div ref={containerRef} style={{ marginTop: "1rem", display: status === "ready" ? "flex" : "none", justifyContent: "center" }} />
+      <div ref={containerRef} style={{ display: ready ? "flex" : "none", justifyContent: "center" }} />
     </div>
   );
 }

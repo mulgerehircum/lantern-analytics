@@ -1,5 +1,6 @@
 import type { RawEventRecordWithKey } from "./dynamodb";
 import type { SessionRecordingItem } from "./sessions";
+import { findCustomEventsForSession, DEFAULT_MATCH_TOLERANCE_MS } from "./session-correlation";
 
 /**
  * Summarizes the portfolio's live-iframe-vs-video card experiment (see
@@ -136,28 +137,16 @@ export function summarizeExperiment(events: RawEventRecordWithKey[]): Experiment
   };
 }
 
-/** "EVENT#2026-08-08T14:32:10Z#f8e2c1" -> epoch ms of "2026-08-08T14:32:10Z". */
-function parseEventTimestamp(sk: string): number | null {
-  const part = sk.split("#")[1];
-  if (!part) return null;
-  const ms = Date.parse(part);
-  return Number.isNaN(ms) ? null : ms;
-}
-
-// Impressions fire on card mount, which should land inside the session's own
-// window, but clock skew between client send and server receive plus queued/
-// batched delivery can push it slightly outside — tolerate a few minutes on
-// either edge rather than requiring an exact bound.
-const VARIANT_MATCH_TOLERANCE_MS = 5 * 60 * 1000;
-
 /**
  * Attaches each session's experiment variant (if any) by matching its
  * visitorHash against card_variant_view impressions that fall within the
- * session's time window. Sessions with no matching impression (visitor never
- * saw an experiment-eligible card, session predates the experiment, or the
- * raw event has already expired past its TTL) get no `variant` field —
- * distinct from a session that saw the "video" variant, so callers can
- * render "—" rather than mislabel it.
+ * session's time window (see lib/session-correlation.ts for the shared
+ * matching logic — this is direction 1, session → its events, filtered down
+ * to impressions and taking the earliest qualifying one). Sessions with no
+ * matching impression (visitor never saw an experiment-eligible card,
+ * session predates the experiment, or the raw event has already expired
+ * past its TTL) get no `variant` field — distinct from a session that saw
+ * the "video" variant, so callers can render "—" rather than mislabel it.
  */
 export function attachVariantToSessions(
   sessions: SessionRecordingItem[],
@@ -166,17 +155,7 @@ export function attachVariantToSessions(
   const impressions = events.filter((e) => e.name === "card_variant_view" && typeof e.metadata?.variant === "string");
 
   return sessions.map((session) => {
-    if (!session.visitorHash) return session;
-    const sessionStart = Date.parse(session.startedAt);
-    if (Number.isNaN(sessionStart)) return session;
-    const sessionEnd = sessionStart + session.durationMs;
-
-    const match = impressions.find((e) => {
-      if (e.visitorHash !== session.visitorHash) return false;
-      const ts = parseEventTimestamp(e.SK);
-      return ts !== null && ts >= sessionStart - VARIANT_MATCH_TOLERANCE_MS && ts <= sessionEnd + VARIANT_MATCH_TOLERANCE_MS;
-    });
-
+    const match = findCustomEventsForSession(session, impressions, DEFAULT_MATCH_TOLERANCE_MS)[0];
     return match ? { ...session, variant: match.metadata!.variant as string } : session;
   });
 }

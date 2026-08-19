@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { getSessionRecordings } from "@/lib/sessions";
+import { getAllRawEvents } from "@/lib/dynamodb";
+import { findCustomEventsForSession } from "@/lib/session-correlation";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { theme, card } from "@/lib/theme";
 import { formatDuration } from "@/lib/format";
 import { AppShell } from "@/components/AppShell";
-import { ReplayPlayer } from "@/components/ReplayPlayer";
+import { SessionReplay } from "@/components/SessionReplay";
 import { LocalDateTime } from "@/components/LocalDateTime";
 
 /**
@@ -18,7 +20,7 @@ export default async function SessionReplayPage({
   searchParams,
 }: {
   params: Promise<{ sessionId: string }>;
-  searchParams: Promise<{ siteId?: string }>;
+  searchParams: Promise<{ siteId?: string; t?: string }>;
 }) {
   const { sessionId } = await params;
   const query = await searchParams;
@@ -26,8 +28,13 @@ export default async function SessionReplayPage({
   const site = getSite(requestedSiteId);
   const siteId = site ? site.siteId : requestedSiteId;
 
-  const sessions = await getSessionRecordings(siteId);
+  const [sessions, rawEvents] = await Promise.all([getSessionRecordings(siteId), getAllRawEvents(siteId)]);
   const session = sessions.find((s) => s.sessionId === sessionId);
+  const customEvents = session
+    ? findCustomEventsForSession(session, rawEvents).map((e) => ({ offsetMs: e.offsetMs, name: e.name!, metadata: e.metadata }))
+    : [];
+  const rawOffset = query.t ? Number(query.t) : undefined;
+  const initialOffsetMs = rawOffset !== undefined && Number.isFinite(rawOffset) ? rawOffset : undefined;
 
   return (
     <AppShell
@@ -68,7 +75,13 @@ export default async function SessionReplayPage({
                 width measurement (taken before the player has any content)
                 read as ~0. */}
             <div style={{ background: "oklch(0.22 0.02 110)", borderRadius: theme.radius.control, padding: "1rem", boxSizing: "border-box" }}>
-              <ReplayPlayer siteId={siteId} sessionId={sessionId} />
+              <SessionReplay
+                siteId={siteId}
+                sessionId={sessionId}
+                sessionStartedAt={session.startedAt}
+                customEvents={customEvents}
+                initialOffsetMs={initialOffsetMs}
+              />
             </div>
           </>
         ) : (

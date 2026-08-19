@@ -1,12 +1,18 @@
 import { aggregateEvents } from "@/lib/aggregate";
-import { getHourlyRollups, getLiveRawEvents, currentHourSK } from "@/lib/dynamodb";
+import { getHourlyRollups, getLiveRawEvents, getAllRawEvents, currentHourSK } from "@/lib/dynamodb";
+import { getSessionRecordings } from "@/lib/sessions";
 import { summarizeRollups } from "@/lib/summarize";
 import { buildRowFilterHref, buildEventDetailFilterHref } from "@/lib/filter-ui";
+import { findSessionForEvent, parseEventTimestamp } from "@/lib/session-correlation";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { theme } from "@/lib/theme";
 import { AppShell } from "@/components/AppShell";
 import { DataTableCard } from "@/components/DataTableCard";
 import type { DataTableRow } from "@/components/DataTableCard";
+import { EventOccurrenceList } from "@/components/EventOccurrenceList";
+import type { EventOccurrenceRow } from "@/components/EventOccurrenceList";
+
+const MAX_OCCURRENCE_ROWS = 50;
 
 /**
  * All-time custom-event totals plus their metadata breakdown — same rollup +
@@ -23,7 +29,12 @@ export default async function EventsPage({
   const site = getSite(requestedSiteId);
   const siteId = site ? site.siteId : requestedSiteId;
 
-  const [rollups, liveEvents] = await Promise.all([getHourlyRollups(siteId), getLiveRawEvents(siteId)]);
+  const [rollups, liveEvents, rawEvents, sessions] = await Promise.all([
+    getHourlyRollups(siteId),
+    getLiveRawEvents(siteId),
+    getAllRawEvents(siteId),
+    getSessionRecordings(siteId),
+  ]);
   const liveRollup = { SK: currentHourSK(), ...aggregateEvents(liveEvents) };
   const summary = summarizeRollups([...rollups, liveRollup]);
 
@@ -37,6 +48,27 @@ export default async function EventsPage({
     count: b.count,
     href: buildEventDetailFilterHref(siteId, b.name, b.dimension, b.value),
   }));
+
+  // Reverse lookup (lib/session-correlation.ts's event→session direction):
+  // individual firings, not the all-time aggregates above — necessarily
+  // scoped to the trailing ~30-day raw-event window (unlike those
+  // aggregates), so the header says so explicitly rather than implying
+  // these two sections share one time range.
+  const customOccurrences = rawEvents.filter((e) => e.name);
+  const occurrences: EventOccurrenceRow[] = [...customOccurrences]
+    .sort((a, b) => (parseEventTimestamp(b.SK) ?? 0) - (parseEventTimestamp(a.SK) ?? 0))
+    .slice(0, MAX_OCCURRENCE_ROWS)
+    .map((e) => {
+      const match = findSessionForEvent(e, sessions);
+      return {
+        timestampIso: new Date(parseEventTimestamp(e.SK) ?? 0).toISOString(),
+        name: e.name!,
+        metadata: e.metadata,
+        country: e.country,
+        device: e.device,
+        sessionHref: match ? `/sessions/${match.session.sessionId}?siteId=${encodeURIComponent(siteId)}&t=${match.offsetMs}` : undefined,
+      };
+    });
 
   return (
     <AppShell
@@ -58,6 +90,10 @@ export default async function EventsPage({
       <div className="lantern-grid-2" style={{ display: "grid", gap: "1.25rem" }}>
         <DataTableCard title="Custom events" rows={eventRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-events.csv`} />
         <DataTableCard title="Custom event details" rows={detailRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-event-details.csv`} />
+      </div>
+
+      <div style={{ marginTop: "1.25rem" }}>
+        <EventOccurrenceList rows={occurrences} totalCount={customOccurrences.length} />
       </div>
     </AppShell>
   );
