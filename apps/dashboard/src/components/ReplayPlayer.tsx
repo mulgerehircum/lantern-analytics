@@ -36,10 +36,25 @@ export function ReplayPlayer({ siteId, sessionId }: { siteId: string; sessionId:
         const { default: RrwebPlayer } = await import("rrweb-player");
         if (cancelled || !containerRef.current) return;
 
+        // rrweb-player renders at a fixed pixel size chosen at construction
+        // time — it does not resize itself afterward. A hardcoded 1000×600
+        // used to be wrapped in a CSS `aspect-ratio` + `overflow: hidden`
+        // container to fit the design, but 1000:600 (5:3, and the player
+        // adds its own ~80px controller bar below that, making the real
+        // rendered box 1000×680, ~1.47:1) never matched the container's
+        // aspect-ratio — the fixed-size player just got silently clipped.
+        // Sizing to the actual available width up front (capped at 1000, no
+        // point upscaling past the original) avoids the mismatch entirely;
+        // a block-level empty div's width already equals its parent's
+        // content width per normal CSS flow, so this is accurate even
+        // though nothing has been rendered into it yet.
+        const width = Math.min(containerRef.current.clientWidth || 1000, 1000);
+        const height = Math.round(width * 0.6);
+
         containerRef.current.innerHTML = "";
         new RrwebPlayer({
           target: containerRef.current,
-          props: { events: data.events, width: 1000, height: 600 },
+          props: { events: data.events, width, height },
         });
         setStatus("ready");
       } catch {

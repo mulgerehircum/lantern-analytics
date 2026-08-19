@@ -58,7 +58,16 @@ export default async function SessionReplayPage({
               <MetaField label="Pages" value={session.pageCount} />
               <MetaField label="Device" value={session.device ?? "—"} />
             </div>
-            <div style={{ background: "oklch(0.22 0.02 110)", borderRadius: theme.radius.control, aspectRatio: "16/10", overflow: "hidden" }}>
+            {/* No fixed aspect-ratio here — ReplayPlayer measures this
+                container's actual width and constructs the (fixed-size,
+                non-resizing) rrweb player to match it, so forcing a
+                separate ratio on the container would just reintroduce the
+                mismatch/clipping bug this replaced. Plain block layout, not
+                flex — a flex item's "auto" width shrinks to content instead
+                of filling the container, which would make ReplayPlayer's
+                width measurement (taken before the player has any content)
+                read as ~0. */}
+            <div style={{ background: "oklch(0.22 0.02 110)", borderRadius: theme.radius.control, padding: "1rem", boxSizing: "border-box" }}>
               <ReplayPlayer siteId={siteId} sessionId={sessionId} />
             </div>
           </>
