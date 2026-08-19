@@ -2,8 +2,11 @@ import { getAllRawEvents } from "@/lib/dynamodb";
 import { getSessionRecordings } from "@/lib/sessions";
 import { attachVariantToSessions } from "@/lib/experiment";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
-import { ProjectSelector, fieldStyle } from "@/components/ProjectSelector";
+import { theme, card } from "@/lib/theme";
+import { fieldStyle } from "@/components/ProjectSelector";
+import { AppShell } from "@/components/AppShell";
 import { LocalDateTime } from "@/components/LocalDateTime";
+import { formatDuration } from "@/lib/format";
 
 /**
  * Session list (Phase 2). Same conventions as the root dashboard page:
@@ -35,26 +38,24 @@ export default async function SessionsPage({
     : sessionsWithVariant;
 
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem", maxWidth: 960, margin: "0 auto" }}>
-      <ProjectSelector siteId={siteId} siteUrl={site?.url} basePath="/sessions" />
-      <h1 style={{ margin: "0.25rem 0 0" }}>
-        Sessions — {site ? site.name : siteId}
-        {" · "}
-        <a href={`/?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", fontWeight: 400, color: "#4f46e5" }}>
-          Dashboard
-        </a>
-        {" · "}
-        <a href={`/experiments?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", fontWeight: 400, color: "#4f46e5" }}>
-          Experiments
-        </a>
-      </h1>
-
+    <AppShell
+      siteId={siteId}
+      siteUrl={site?.url}
+      activeView="sessions"
+      basePath="/sessions"
+      title={
+        <>
+          {site ? site.name : siteId}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+        </>
+      }
+    >
       {availableVariants.length > 0 && (
         <VariantFilterForm siteId={siteId} variant={variantFilter} availableVariants={availableVariants} />
       )}
 
       <SessionsTable siteId={siteId} sessions={filteredSessions} />
-    </main>
+    </AppShell>
   );
 }
 
@@ -75,14 +76,11 @@ function VariantFilterForm({
         gap: "0.5rem",
         alignItems: "flex-end",
         flexWrap: "wrap",
-        margin: "1rem 0",
-        padding: "0.75rem",
-        border: "1px solid #ddd",
-        borderRadius: 8,
+        margin: "0 0 1.2rem",
       }}
     >
       <input type="hidden" name="siteId" value={siteId} />
-      <label style={{ fontSize: "0.75rem", color: "#555" }}>
+      <label style={{ fontSize: "0.75rem", color: theme.color.textMuted }}>
         Variant
         <br />
         <select name="variant" defaultValue={variant ?? ""} style={fieldStyle}>
@@ -94,11 +92,11 @@ function VariantFilterForm({
           ))}
         </select>
       </label>
-      <button type="submit" style={{ ...fieldStyle, cursor: "pointer", background: "#4f46e5", color: "#fff", border: "none" }}>
+      <button type="submit" style={{ ...fieldStyle, cursor: "pointer", background: theme.color.brand, color: "#fff", border: "none" }}>
         Filter
       </button>
       {variant && (
-        <a href={`/sessions?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", color: "#4f46e5" }}>
+        <a href={`/sessions?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", color: theme.color.brand }}>
           Clear
         </a>
       )}
@@ -123,52 +121,50 @@ function SessionsTable({
     variant?: string;
   }>;
 }) {
-  if (sessions.length === 0) {
-    return <p style={{ color: "#999", marginTop: "1.5rem" }}>No recorded sessions yet.</p>;
-  }
-
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1.5rem" }}>
-      <thead>
-        <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-          <th style={{ padding: "6px 0" }}>Started</th>
-          <th style={{ padding: "6px 0" }}>Duration</th>
-          <th style={{ padding: "6px 0" }}>Pages</th>
-          <th style={{ padding: "6px 0" }}>Landing page</th>
-          <th style={{ padding: "6px 0" }}>Referrer</th>
-          <th style={{ padding: "6px 0" }}>Country</th>
-          <th style={{ padding: "6px 0" }}>Device</th>
-          <th style={{ padding: "6px 0" }}>Variant</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sessions.map((s) => (
-          <tr key={s.sessionId} style={{ borderBottom: "1px solid #f0f0f0" }}>
-            <td style={{ padding: "6px 0" }}>
-              <a
-                href={`/sessions/${encodeURIComponent(s.sessionId)}?siteId=${encodeURIComponent(siteId)}`}
-                style={{ color: "#4f46e5" }}
-              >
-                <LocalDateTime iso={s.startedAt} />
-              </a>
-            </td>
-            <td style={{ padding: "6px 0" }}>{formatDuration(s.durationMs)}</td>
-            <td style={{ padding: "6px 0" }}>{s.pageCount}</td>
-            <td style={{ padding: "6px 0" }}>{s.path || "—"}</td>
-            <td style={{ padding: "6px 0" }}>{s.referrer || "direct"}</td>
-            <td style={{ padding: "6px 0" }}>{s.country ?? "—"}</td>
-            <td style={{ padding: "6px 0" }}>{s.device ?? "—"}</td>
-            <td style={{ padding: "6px 0", textTransform: "capitalize" }}>{s.variant ?? "—"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div style={card}>
+      <div style={{ fontWeight: theme.font.weight.semibold, marginBottom: "0.9rem", fontSize: "0.85rem" }}>Sessions</div>
+      {sessions.length === 0 ? (
+        <p style={{ color: "#999", fontSize: "0.82rem", margin: 0 }}>No recorded sessions yet.</p>
+      ) : (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+          <thead>
+            <tr style={{ textAlign: "left", color: theme.color.textMuted }}>
+              <th style={{ padding: "0.4rem 0.6rem 0.4rem 0", fontWeight: theme.font.weight.medium }}>Started</th>
+              <th style={{ padding: "0.4rem 0.6rem", fontWeight: theme.font.weight.medium }}>Duration</th>
+              <th style={{ padding: "0.4rem 0.6rem", fontWeight: theme.font.weight.medium }}>Pages</th>
+              <th style={{ padding: "0.4rem 0.6rem", fontWeight: theme.font.weight.medium }}>Landing page</th>
+              <th style={{ padding: "0.4rem 0.6rem", fontWeight: theme.font.weight.medium }}>Referrer</th>
+              <th style={{ padding: "0.4rem 0.6rem", fontWeight: theme.font.weight.medium }}>Country</th>
+              <th style={{ padding: "0.4rem 0.6rem", fontWeight: theme.font.weight.medium }}>Device</th>
+              <th style={{ padding: "0.4rem 0.6rem", fontWeight: theme.font.weight.medium }}>Variant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sessions.map((s) => (
+              <tr key={s.sessionId} style={{ borderTop: `1px solid ${theme.color.cardBorder}` }}>
+                <td style={{ padding: "0.55rem 0.6rem 0.55rem 0" }}>
+                  <a
+                    href={`/sessions/${encodeURIComponent(s.sessionId)}?siteId=${encodeURIComponent(siteId)}`}
+                    style={{ color: theme.color.brandTintTextStrong, fontWeight: theme.font.weight.semibold, textDecoration: "none" }}
+                  >
+                    <LocalDateTime iso={s.startedAt} />
+                  </a>
+                </td>
+                <td style={{ padding: "0.55rem 0.6rem" }}>{formatDuration(s.durationMs)}</td>
+                <td style={{ padding: "0.55rem 0.6rem" }}>{s.pageCount}</td>
+                <td style={{ padding: "0.55rem 0.6rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>
+                  {s.path || "—"}
+                </td>
+                <td style={{ padding: "0.55rem 0.6rem" }}>{s.referrer || "direct"}</td>
+                <td style={{ padding: "0.55rem 0.6rem" }}>{s.country ?? "—"}</td>
+                <td style={{ padding: "0.55rem 0.6rem" }}>{s.device ?? "—"}</td>
+                <td style={{ padding: "0.55rem 0.6rem", textTransform: "capitalize" }}>{s.variant ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
-}
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.round(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }

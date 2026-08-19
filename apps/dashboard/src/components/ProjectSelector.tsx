@@ -1,12 +1,13 @@
 import { SITES } from "@/lib/sites";
+import { theme } from "@/lib/theme";
 
-/** Shared inline-style constant for form fields — used by ProjectSelector,
- * page.tsx's FilterBar, and the sessions pages, keeping their controls
- * visually consistent without a component library (see docs/design.md). */
+/** Shared inline-style constant for form fields — used by ProjectSelector
+ * and the sessions pages' VariantFilterForm, keeping their controls visually
+ * consistent without a component library (see docs/design.md). */
 export const fieldStyle: React.CSSProperties = {
   padding: "6px 8px",
-  borderRadius: 6,
-  border: "1px solid #ccc",
+  borderRadius: theme.radius.small,
+  border: `1px solid ${theme.color.fieldBorder}`,
   fontSize: "0.85rem",
 };
 
@@ -16,6 +17,12 @@ export const fieldStyle: React.CSSProperties = {
  * projects is a "start fresh here" action (see page.tsx's original comment on
  * this same behavior). `basePath` lets the sessions pages reuse this control
  * while landing back on `/sessions` instead of `/`.
+ *
+ * The design mockup's sidebar site-picker shows no separate submit control
+ * (implying a live-onChange interaction) — this app has no client JS on this
+ * form, so a real submit button has to stay visible. Shrunk to a small arrow
+ * icon-button to fit the sidebar's visual weight rather than dropped
+ * entirely — a deliberate, documented fidelity deviation.
  */
 export function ProjectSelector({
   siteId,
@@ -27,21 +34,22 @@ export function ProjectSelector({
   basePath?: string;
 }) {
   return (
-    <form
-      method="GET"
-      action={basePath}
-      style={{
-        display: "flex",
-        gap: "0.5rem",
-        alignItems: "flex-end",
-        flexWrap: "wrap",
-        marginBottom: "0.5rem",
-      }}
-    >
-      <label style={{ fontSize: "0.75rem", color: "#555" }}>
-        Project
-        <br />
-        <select name="siteId" defaultValue={siteId} style={fieldStyle}>
+    <form method="GET" action={basePath} style={{ marginBottom: "1.6rem" }}>
+      <div style={{ display: "flex", gap: "0.4rem" }}>
+        <select
+          name="siteId"
+          defaultValue={siteId}
+          style={{
+            width: "100%",
+            border: `1px solid ${theme.color.fieldBorder}`,
+            borderRadius: theme.radius.control,
+            padding: "8px 10px",
+            fontSize: "0.85rem",
+            fontFamily: "inherit",
+            background: "#fff",
+            boxSizing: "border-box",
+          }}
+        >
           {SITES.map((s) => (
             <option key={s.siteId} value={s.siteId}>
               {s.name}
@@ -49,12 +57,26 @@ export function ProjectSelector({
           ))}
           {!SITES.some((s) => s.siteId === siteId) && <option value={siteId}>{siteId} (unregistered)</option>}
         </select>
-      </label>
-      <button type="submit" style={{ ...fieldStyle, cursor: "pointer", background: "#4f46e5", color: "#fff", border: "none" }}>
-        Open
-      </button>
+        <button
+          type="submit"
+          aria-label="Switch project"
+          title="Switch project"
+          style={{
+            flexShrink: 0,
+            width: 34,
+            border: "none",
+            borderRadius: theme.radius.control,
+            background: theme.color.brand,
+            color: "#fff",
+            cursor: "pointer",
+            fontSize: "0.9rem",
+          }}
+        >
+          →
+        </button>
+      </div>
       {siteUrl && (
-        <a href={siteUrl} target="_blank" rel="noreferrer" style={{ fontSize: "0.85rem", color: "#4f46e5" }}>
+        <a href={siteUrl} target="_blank" rel="noreferrer" style={{ fontSize: "0.72rem", color: theme.color.brand, display: "block", marginTop: "0.4rem" }}>
           {siteUrl}
         </a>
       )}

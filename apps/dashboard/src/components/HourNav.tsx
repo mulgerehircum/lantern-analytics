@@ -1,45 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { shiftHour, parentDay, formatDayLabel, formatHourLabel } from "@/lib/months";
+import { theme } from "@/lib/theme";
+import { shiftHour, formatHourLabel } from "@/lib/months";
 
 /**
- * Prev/next/back nav for the hour-level drill-down — same shape as
- * MonthNav/DayNav, but a client component: an hour boundary is exactly the
- * granularity where UTC-vs-local timezone actually matters (a "21:00 UTC"
- * bucket is a different wall-clock hour depending on who's looking), unlike
- * month/day labels which stay pure UTC string math. Shifting itself still
- * moves by UTC hour buckets — that's the real unit of stored data; only the
- * displayed label localizes. SSRs the UTC-labeled fallback (formatHourLabel)
- * first, swaps to the browser's local time after mount, same pattern as
- * LocalDateTime/HourBar.
+ * Secondary prev/next affordance for the hour-level drill-down, next to
+ * Breadcrumb in the chart card (which now owns "go up a level" — this
+ * dropped its old "(up to X)" trailing link). A client component: an hour
+ * boundary is exactly the granularity where UTC-vs-local timezone actually
+ * matters (a "21:00 UTC" bucket is a different wall-clock hour depending on
+ * who's looking), unlike month/day labels which stay pure UTC string math.
+ * Shifting itself still moves by UTC hour buckets — that's the real unit of
+ * stored data; only the displayed label localizes. SSRs the UTC-labeled
+ * fallback (formatHourLabel) first, swaps to the browser's local time after
+ * mount, same pattern as LocalDateTime/HourBar.
  */
 export function HourNav({ siteId, hour }: { siteId: string; hour: string }) {
   const prev = shiftHour(hour, -1);
   const next = shiftHour(hour, 1);
-  const day = parentDay(hour);
 
-  const [labels, setLabels] = useState<{ prev: string; current: string; next: string } | null>(null);
+  const [labels, setLabels] = useState<{ prev: string; next: string } | null>(null);
 
   useEffect(() => {
     // dateStyle/timeStyle "short" — an hour bucket always lands exactly on
     // the hour, so the bare toLocaleString() default's seconds are always a
     // redundant ":00".
     const toLocal = (h: string) => new Date(`${h}:00:00.000Z`).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
-    setLabels({ prev: toLocal(prev), current: toLocal(hour), next: toLocal(next) });
-  }, [hour, prev, next]);
+    setLabels({ prev: toLocal(prev), next: toLocal(next) });
+  }, [prev, next]);
 
   return (
-    <p style={{ fontSize: "0.85rem", margin: "0.25rem 0 0", display: "flex", gap: "0.75rem", alignItems: "center" }}>
-      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={{ color: "#4f46e5" }}>
+    <p style={{ fontSize: "0.72rem", margin: 0, display: "flex", gap: "0.6rem", alignItems: "center" }}>
+      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={{ color: theme.color.textMutedLight, textDecoration: "none" }}>
         ← {labels ? labels.prev : formatHourLabel(prev)}
       </a>
-      <strong>{labels ? labels.current : formatHourLabel(hour)}</strong>
-      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={{ color: "#4f46e5" }}>
+      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={{ color: theme.color.textMutedLight, textDecoration: "none" }}>
         {labels ? labels.next : formatHourLabel(next)} →
-      </a>
-      <a href={`/?siteId=${encodeURIComponent(siteId)}&month=${day}`} style={{ color: "#666" }}>
-        (up to {formatDayLabel(day)})
       </a>
     </p>
   );

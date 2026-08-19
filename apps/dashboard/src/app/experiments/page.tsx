@@ -2,7 +2,8 @@ import { getAllRawEvents } from "@/lib/dynamodb";
 import { summarizeExperiment } from "@/lib/experiment";
 import type { ExperimentVariantStats } from "@/lib/experiment";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
-import { ProjectSelector } from "@/components/ProjectSelector";
+import { theme, card } from "@/lib/theme";
+import { AppShell } from "@/components/AppShell";
 
 /**
  * Dedicated view for the portfolio's live-iframe-vs-video card experiment
@@ -25,64 +26,65 @@ export default async function ExperimentsPage({
   const experiment = summarizeExperiment(events);
 
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem", maxWidth: 960, margin: "0 auto" }}>
-      <ProjectSelector siteId={siteId} siteUrl={site?.url} basePath="/experiments" />
-      <h1 style={{ margin: "0.25rem 0 0" }}>
-        Experiments — {site ? site.name : siteId}
-        {" · "}
-        <a href={`/?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", fontWeight: 400, color: "#4f46e5" }}>
-          Dashboard
-        </a>
-        {" · "}
-        <a href={`/sessions?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", fontWeight: 400, color: "#4f46e5" }}>
-          Sessions
-        </a>
-      </h1>
-      <p style={{ color: "#b45309", fontSize: "0.85rem", margin: "0.25rem 0 1rem" }}>
-        Built from raw events, which live for ~30 days — this covers the trailing 30 days, not full history.
-      </p>
-
-      <h2 style={{ fontSize: "1rem", margin: "1.5rem 0 0.5rem" }}>Live iframe vs. video card</h2>
-      {experiment.overall.length === 0 ? (
-        <p style={{ color: "#999" }}>No experiment data in the last ~30 days.</p>
-      ) : (
+    <AppShell
+      siteId={siteId}
+      siteUrl={site?.url}
+      activeView="experiments"
+      basePath="/experiments"
+      title={
         <>
-          <VariantTable title="Overall" stats={experiment.overall} />
-          {experiment.byProject.map((p) => (
-            <VariantTable key={p.project} title={p.project} stats={p.variants} />
-          ))}
+          {site ? site.name : siteId}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
         </>
-      )}
-    </main>
+      }
+    >
+      <div style={card}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.2rem", flexWrap: "wrap", gap: "0.4rem" }}>
+          <div style={{ fontWeight: theme.font.weight.semibold, fontSize: "0.85rem" }}>Experiments</div>
+          <div style={{ fontSize: "0.72rem", color: theme.color.amber }}>Live iframe vs. video card · trailing 30 days</div>
+        </div>
+
+        {experiment.overall.length === 0 ? (
+          <p style={{ color: "#999" }}>No experiment data in the last ~30 days.</p>
+        ) : (
+          <>
+            <VariantTable title="Overall" stats={experiment.overall} />
+            {experiment.byProject.map((p) => (
+              <VariantTable key={p.project} title={p.project} stats={p.variants} />
+            ))}
+          </>
+        )}
+      </div>
+    </AppShell>
   );
 }
 
 function VariantTable({ title, stats }: { title: string; stats: ExperimentVariantStats[] }) {
   return (
-    <div style={{ marginBottom: "1.5rem" }}>
-      <h3 style={{ fontSize: "0.85rem", color: "#555", margin: "0 0 0.4rem" }}>{title}</h3>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <div style={{ marginTop: "1.1rem" }}>
+      <div style={{ fontSize: "0.78rem", fontWeight: theme.font.weight.semibold, color: theme.color.textMuted, marginBottom: "0.4rem" }}>{title}</div>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
         <thead>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-            <th style={{ padding: "6px 0" }}>Variant</th>
-            <th style={{ padding: "6px 0", textAlign: "right" }}>Impressions</th>
-            <th style={{ padding: "6px 0", textAlign: "right" }}>Live clicks</th>
-            <th style={{ padding: "6px 0", textAlign: "right" }}>Expand clicks</th>
-            <th style={{ padding: "6px 0", textAlign: "right" }}>GitHub clicks</th>
-            <th style={{ padding: "6px 0", textAlign: "right" }}>CTR (live)</th>
-            <th style={{ padding: "6px 0", textAlign: "right" }}>Engagement</th>
+          <tr style={{ textAlign: "left", color: theme.color.textMuted, fontWeight: theme.font.weight.medium }}>
+            <th style={{ padding: "0.4rem 0.6rem 0.4rem 0", borderBottom: `1px solid ${theme.color.cardBorder}` }}>Variant</th>
+            <th style={{ padding: "0.4rem 0.6rem", textAlign: "right", borderBottom: `1px solid ${theme.color.cardBorder}` }}>Impressions</th>
+            <th style={{ padding: "0.4rem 0.6rem", textAlign: "right", borderBottom: `1px solid ${theme.color.cardBorder}` }}>Live clicks</th>
+            <th style={{ padding: "0.4rem 0.6rem", textAlign: "right", borderBottom: `1px solid ${theme.color.cardBorder}` }}>Expand clicks</th>
+            <th style={{ padding: "0.4rem 0.6rem", textAlign: "right", borderBottom: `1px solid ${theme.color.cardBorder}` }}>GitHub clicks</th>
+            <th style={{ padding: "0.4rem 0.6rem", textAlign: "right", borderBottom: `1px solid ${theme.color.cardBorder}` }}>CTR</th>
+            <th style={{ padding: "0.4rem 0 0.4rem 0.6rem", textAlign: "right", borderBottom: `1px solid ${theme.color.cardBorder}` }}>Engagement</th>
           </tr>
         </thead>
         <tbody>
           {stats.map((s) => (
-            <tr key={s.variant} style={{ borderBottom: "1px solid #f0f0f0" }}>
-              <td style={{ padding: "6px 0", textTransform: "capitalize" }}>{s.variant}</td>
-              <td style={{ padding: "6px 0", textAlign: "right" }}>{s.impressions}</td>
-              <td style={{ padding: "6px 0", textAlign: "right" }}>{s.liveClicks}</td>
-              <td style={{ padding: "6px 0", textAlign: "right" }}>{s.expandClicks}</td>
-              <td style={{ padding: "6px 0", textAlign: "right" }}>{s.githubClicks}</td>
-              <td style={{ padding: "6px 0", textAlign: "right" }}>{s.ctrPercent}%</td>
-              <td style={{ padding: "6px 0", textAlign: "right" }}>{s.engagementPercent}%</td>
+            <tr key={s.variant} style={{ borderTop: `1px solid ${theme.color.cardBorder}` }}>
+              <td style={{ padding: "0.5rem 0.6rem 0.5rem 0", fontWeight: theme.font.weight.semibold, textTransform: "capitalize" }}>{s.variant}</td>
+              <td style={{ padding: "0.5rem 0.6rem", textAlign: "right" }}>{s.impressions}</td>
+              <td style={{ padding: "0.5rem 0.6rem", textAlign: "right" }}>{s.liveClicks}</td>
+              <td style={{ padding: "0.5rem 0.6rem", textAlign: "right" }}>{s.expandClicks}</td>
+              <td style={{ padding: "0.5rem 0.6rem", textAlign: "right" }}>{s.githubClicks}</td>
+              <td style={{ padding: "0.5rem 0.6rem", textAlign: "right", fontWeight: theme.font.weight.semibold, color: theme.color.brandTintTextStrong }}>{s.ctrPercent}%</td>
+              <td style={{ padding: "0.5rem 0 0.5rem 0.6rem", textAlign: "right", fontWeight: theme.font.weight.semibold, color: theme.color.brandTintTextStrong }}>{s.engagementPercent}%</td>
             </tr>
           ))}
         </tbody>

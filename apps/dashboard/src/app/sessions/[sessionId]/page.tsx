@@ -1,6 +1,8 @@
 import { getSessionRecordings } from "@/lib/sessions";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
-import { ProjectSelector } from "@/components/ProjectSelector";
+import { theme, card } from "@/lib/theme";
+import { formatDuration } from "@/lib/format";
+import { AppShell } from "@/components/AppShell";
 import { ReplayPlayer } from "@/components/ReplayPlayer";
 import { LocalDateTime } from "@/components/LocalDateTime";
 
@@ -27,33 +29,53 @@ export default async function SessionReplayPage({
   const session = sessions.find((s) => s.sessionId === sessionId);
 
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", padding: "2rem", maxWidth: 1100, margin: "0 auto" }}>
-      <ProjectSelector siteId={siteId} siteUrl={site?.url} basePath="/sessions" />
-      <h1 style={{ margin: "0.25rem 0 0" }}>
-        Session replay
-        {" · "}
-        <a href={`/sessions?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.85rem", fontWeight: 400, color: "#4f46e5" }}>
-          Back to sessions
-        </a>
-      </h1>
-
-      {session ? (
+    <AppShell
+      siteId={siteId}
+      siteUrl={site?.url}
+      activeView="sessions"
+      basePath="/sessions"
+      title={
         <>
-          <p style={{ color: "#666", fontSize: "0.85rem" }}>
-            Started <LocalDateTime iso={session.startedAt} /> · {session.pageCount} page
-            {session.pageCount === 1 ? "" : "s"}
-            {session.path ? <> · landed on {session.path}</> : null}
-            {session.referrer ? <> · via {session.referrer}</> : null}
-            {session.country ? <> · {session.country}</> : null}
-            {session.device ? <> · {session.device}</> : null}
-          </p>
-          <ReplayPlayer siteId={siteId} sessionId={sessionId} />
+          {site ? site.name : siteId}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
         </>
-      ) : (
-        <p style={{ color: "#b45309", marginTop: "1.5rem" }}>
-          No recording found for this session (it may have expired, or the sessionId/siteId don't match).
-        </p>
-      )}
-    </main>
+      }
+    >
+      <div style={card}>
+        <a
+          href={`/sessions?siteId=${encodeURIComponent(siteId)}`}
+          style={{ display: "inline-block", fontSize: "0.8rem", color: theme.color.brand, textDecoration: "none", fontWeight: theme.font.weight.semibold, marginBottom: "1.1rem" }}
+        >
+          ← Back to sessions
+        </a>
+
+        {session ? (
+          <>
+            <div style={{ display: "flex", gap: "1.6rem", marginBottom: "1.2rem", flexWrap: "wrap" }}>
+              <MetaField label="Started" value={<LocalDateTime iso={session.startedAt} />} />
+              <MetaField label="Duration" value={formatDuration(session.durationMs)} />
+              <MetaField label="Pages" value={session.pageCount} />
+              <MetaField label="Device" value={session.device ?? "—"} />
+            </div>
+            <div style={{ background: "oklch(0.22 0.02 110)", borderRadius: theme.radius.control, aspectRatio: "16/10", overflow: "hidden" }}>
+              <ReplayPlayer siteId={siteId} sessionId={sessionId} />
+            </div>
+          </>
+        ) : (
+          <p style={{ color: theme.color.amber, marginTop: "1.5rem" }}>
+            No recording found for this session (it may have expired, or the sessionId/siteId don&apos;t match).
+          </p>
+        )}
+      </div>
+    </AppShell>
+  );
+}
+
+function MetaField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: "0.72rem", color: theme.color.textMuted }}>{label}</div>
+      <div style={{ fontWeight: theme.font.weight.semibold, fontSize: "0.9rem" }}>{value}</div>
+    </div>
   );
 }

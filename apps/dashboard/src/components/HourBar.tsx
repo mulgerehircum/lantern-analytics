@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { theme } from "@/lib/theme";
 
 /**
  * One bar in the hourly time-series chart. Same reasoning as LocalDateTime:
@@ -46,8 +47,8 @@ export function HourBar({
       style={{
         width: 12,
         height: heightPx,
-        background: "#4f46e5",
-        borderRadius: "2px 2px 0 0",
+        background: theme.color.brand,
+        borderRadius: "4px 4px 0 0",
       }}
     />
   );
