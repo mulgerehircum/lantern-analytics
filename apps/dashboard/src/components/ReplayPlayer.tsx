@@ -90,11 +90,16 @@ export function ReplayPlayer({ siteId, sessionId }: { siteId: string; sessionId:
           normal flow for its parent's height calculation, so an un-cleared
           parent collapses to 0 height while the floated player still
           renders at full size, visually escaping the collapsed box instead
-          of appearing contained within it. display:flow-root establishes a
-          new block formatting context, which properly contains floated
-          descendants (the modern equivalent of an old-school clearfix)
-          without any of overflow:hidden's clipping side effects. */}
-      <div ref={containerRef} style={{ marginTop: "1rem", display: status === "ready" ? "flow-root" : "none" }} />
+          of appearing contained within it. `display: flex` (rather than
+          flow-root) both contains the float — flex items ignore `float`
+          per spec, converting it to `none` — and lets justifyContent center
+          the player. Centering matters because the width computed above,
+          taken before the player exists, can end up a handful of pixels
+          off from the container's true post-layout width (e.g. if a
+          scrollbar appears only once the player is inserted) — flex
+          centering makes any such small mismatch symmetric and invisible
+          instead of all the slack landing on one side. */}
+      <div ref={containerRef} style={{ marginTop: "1rem", display: status === "ready" ? "flex" : "none", justifyContent: "center" }} />
     </div>
   );
 }
