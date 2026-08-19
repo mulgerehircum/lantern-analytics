@@ -40,17 +40,19 @@ describe("summarizeExperiment", () => {
     expect(result.overall).toEqual([]);
   });
 
-  it("counts impressions and live/github clicks per variant", () => {
+  it("counts impressions and live/github/expand clicks per variant", () => {
     const result = summarizeExperiment([
       event({ name: "card_variant_view", metadata: { project_title: "PDFloom", variant: "iframe" } }),
       event({ name: "card_variant_view", metadata: { project_title: "PDFloom", variant: "iframe" } }),
       event({ name: "card_variant_view", metadata: { project_title: "PDFloom", variant: "video" } }),
       event({ name: "project_link_click", metadata: { project_title: "PDFloom", link_type: "live", variant: "iframe" } }),
       event({ name: "project_link_click", metadata: { project_title: "PDFloom", link_type: "github", variant: "iframe" } }),
+      event({ name: "iframe_expand_click", metadata: { project_title: "PDFloom", variant: "iframe" } }),
+      event({ name: "iframe_expand_click", metadata: { project_title: "PDFloom", variant: "iframe" } }),
     ]);
     expect(result.overall).toEqual([
-      { variant: "iframe", impressions: 2, liveClicks: 1, githubClicks: 1, ctrPercent: 50 },
-      { variant: "video", impressions: 1, liveClicks: 0, githubClicks: 0, ctrPercent: 0 },
+      { variant: "iframe", impressions: 2, liveClicks: 1, githubClicks: 1, expandClicks: 2, ctrPercent: 50 },
+      { variant: "video", impressions: 1, liveClicks: 0, githubClicks: 0, expandClicks: 0, ctrPercent: 0 },
     ]);
   });
 
@@ -59,15 +61,16 @@ describe("summarizeExperiment", () => {
       event({ name: "card_variant_view", metadata: { project_title: "PDFloom", variant: "iframe" } }),
       event({ name: "card_variant_view", metadata: { project_title: "Dataroom", variant: "video" } }),
       event({ name: "project_link_click", metadata: { project_title: "PDFloom", link_type: "live", variant: "iframe" } }),
+      event({ name: "iframe_expand_click", metadata: { project_title: "PDFloom", variant: "iframe" } }),
     ]);
     expect(result.byProject).toEqual([
       {
         project: "Dataroom",
-        variants: [{ variant: "video", impressions: 1, liveClicks: 0, githubClicks: 0, ctrPercent: 0 }],
+        variants: [{ variant: "video", impressions: 1, liveClicks: 0, githubClicks: 0, expandClicks: 0, ctrPercent: 0 }],
       },
       {
         project: "PDFloom",
-        variants: [{ variant: "iframe", impressions: 1, liveClicks: 1, githubClicks: 0, ctrPercent: 100 }],
+        variants: [{ variant: "iframe", impressions: 1, liveClicks: 1, githubClicks: 0, expandClicks: 1, ctrPercent: 100 }],
       },
     ]);
   });

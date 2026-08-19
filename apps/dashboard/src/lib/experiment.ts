@@ -6,9 +6,10 @@ import type { SessionRecordingItem } from "./sessions";
  * my-portfolio's utils/experiment.ts) from raw events. Rollups can't answer
  * this — eventDimensions flattens project_title and variant into separate
  * per-key breakdowns, losing the join between "this impression/click was for
- * project X under variant Y" — so this reads card_variant_view (impression)
- * and project_link_click (click) EVENT# items directly. Same ~30-day
- * raw-event TTL coverage limit as the dashboard's dimension filters.
+ * project X under variant Y" — so this reads card_variant_view (impression),
+ * project_link_click (click), and iframe_expand_click (iframe-variant modal
+ * open) EVENT# items directly. Same ~30-day raw-event TTL coverage limit as
+ * the dashboard's dimension filters.
  */
 
 export interface ExperimentVariantStats {
@@ -16,6 +17,8 @@ export interface ExperimentVariantStats {
   impressions: number;
   liveClicks: number;
   githubClicks: number;
+  /** Clicks that opened the live-site iframe modal (iframe variant only — see trackIframeExpand). */
+  expandClicks: number;
   /** liveClicks / impressions, as a percentage rounded to 1 decimal. */
   ctrPercent: number;
 }
@@ -34,37 +37,43 @@ function buildStats(
   impressionsByVariant: Record<string, number>,
   liveClicksByVariant: Record<string, number>,
   githubClicksByVariant: Record<string, number>,
+  expandClicksByVariant: Record<string, number>,
 ): ExperimentVariantStats[] {
   const variants = new Set([
     ...Object.keys(impressionsByVariant),
     ...Object.keys(liveClicksByVariant),
     ...Object.keys(githubClicksByVariant),
+    ...Object.keys(expandClicksByVariant),
   ]);
   return [...variants]
     .map((variant) => {
       const impressions = impressionsByVariant[variant] ?? 0;
       const liveClicks = liveClicksByVariant[variant] ?? 0;
       const githubClicks = githubClicksByVariant[variant] ?? 0;
+      const expandClicks = expandClicksByVariant[variant] ?? 0;
       return {
         variant,
         impressions,
         liveClicks,
         githubClicks,
+        expandClicks,
         ctrPercent: impressions > 0 ? Math.round((liveClicks / impressions) * 1000) / 10 : 0,
       };
     })
     .sort((a, b) => b.impressions - a.impressions || a.variant.localeCompare(b.variant));
 }
 
-/** Reads card_variant_view / project_link_click events; anything else (or missing a `variant`) is ignored. */
+/** Reads card_variant_view / project_link_click / iframe_expand_click events; anything else (or missing a `variant`) is ignored. */
 export function summarizeExperiment(events: RawEventRecordWithKey[]): ExperimentSummary {
   const overallImpressions: Record<string, number> = {};
   const overallLiveClicks: Record<string, number> = {};
   const overallGithubClicks: Record<string, number> = {};
+  const overallExpandClicks: Record<string, number> = {};
 
   const byProjectImpressions: Record<string, Record<string, number>> = {};
   const byProjectLiveClicks: Record<string, Record<string, number>> = {};
   const byProjectGithubClicks: Record<string, Record<string, number>> = {};
+  const byProjectExpandClicks: Record<string, Record<string, number>> = {};
 
   for (const event of events) {
     const metadata = event.metadata ?? {};
@@ -87,6 +96,12 @@ export function summarizeExperiment(events: RawEventRecordWithKey[]): Experiment
         const byVariant = (byProjectTarget[project] ??= {});
         byVariant[variant] = (byVariant[variant] ?? 0) + 1;
       }
+    } else if (event.name === "iframe_expand_click") {
+      overallExpandClicks[variant] = (overallExpandClicks[variant] ?? 0) + 1;
+      if (project) {
+        const byVariant = (byProjectExpandClicks[project] ??= {});
+        byVariant[variant] = (byVariant[variant] ?? 0) + 1;
+      }
     }
   }
 
@@ -94,16 +109,18 @@ export function summarizeExperiment(events: RawEventRecordWithKey[]): Experiment
     ...Object.keys(byProjectImpressions),
     ...Object.keys(byProjectLiveClicks),
     ...Object.keys(byProjectGithubClicks),
+    ...Object.keys(byProjectExpandClicks),
   ]);
 
   return {
-    overall: buildStats(overallImpressions, overallLiveClicks, overallGithubClicks),
+    overall: buildStats(overallImpressions, overallLiveClicks, overallGithubClicks, overallExpandClicks),
     byProject: [...projects].sort((a, b) => a.localeCompare(b)).map((project) => ({
       project,
       variants: buildStats(
         byProjectImpressions[project] ?? {},
         byProjectLiveClicks[project] ?? {},
         byProjectGithubClicks[project] ?? {},
+        byProjectExpandClicks[project] ?? {},
       ),
     })),
   };
