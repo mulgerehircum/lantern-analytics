@@ -85,7 +85,16 @@ export function ReplayPlayer({ siteId, sessionId }: { siteId: string; sessionId:
       {status === "loading" && <p style={{ color: theme.color.textFaint, marginTop: "1rem" }}>Loading recording…</p>}
       {status === "empty" && <p style={{ color: theme.color.textFaint, marginTop: "1rem" }}>This session has no recorded events.</p>}
       {status === "error" && <p style={{ color: theme.color.danger, marginTop: "1rem" }}>Failed to load the recording.</p>}
-      <div ref={containerRef} style={{ marginTop: "1rem", display: status === "ready" ? "block" : "none" }} />
+      {/* rrweb-player's own bundled CSS floats .rr-player (`float: left`) —
+          harmless on its own demo page, but a floated child is removed from
+          normal flow for its parent's height calculation, so an un-cleared
+          parent collapses to 0 height while the floated player still
+          renders at full size, visually escaping the collapsed box instead
+          of appearing contained within it. display:flow-root establishes a
+          new block formatting context, which properly contains floated
+          descendants (the modern equivalent of an old-school clearfix)
+          without any of overflow:hidden's clipping side effects. */}
+      <div ref={containerRef} style={{ marginTop: "1rem", display: status === "ready" ? "flow-root" : "none" }} />
     </div>
   );
 }
