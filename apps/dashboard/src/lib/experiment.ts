@@ -21,6 +21,15 @@ export interface ExperimentVariantStats {
   expandClicks: number;
   /** liveClicks / impressions, as a percentage rounded to 1 decimal. */
   ctrPercent: number;
+  /**
+   * (liveClicks + expandClicks) / impressions, as a percentage rounded to 1
+   * decimal. Broader than ctrPercent: counts expanding the live-site iframe
+   * modal as engagement alongside clicking through via the Link anchor, so
+   * the iframe variant isn't penalized for offering an in-card way to engage
+   * that the video variant doesn't have. GitHub clicks are excluded — that's
+   * a click off the card unrelated to the live-site treatment being tested.
+   */
+  engagementPercent: number;
 }
 
 export interface ExperimentProjectStats {
@@ -58,6 +67,7 @@ function buildStats(
         githubClicks,
         expandClicks,
         ctrPercent: impressions > 0 ? Math.round((liveClicks / impressions) * 1000) / 10 : 0,
+        engagementPercent: impressions > 0 ? Math.round(((liveClicks + expandClicks) / impressions) * 1000) / 10 : 0,
       };
     })
     .sort((a, b) => b.impressions - a.impressions || a.variant.localeCompare(b.variant));

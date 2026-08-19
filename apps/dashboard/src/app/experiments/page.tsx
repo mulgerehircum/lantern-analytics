@@ -70,6 +70,7 @@ function VariantTable({ title, stats }: { title: string; stats: ExperimentVarian
             <th style={{ padding: "6px 0", textAlign: "right" }}>Expand clicks</th>
             <th style={{ padding: "6px 0", textAlign: "right" }}>GitHub clicks</th>
             <th style={{ padding: "6px 0", textAlign: "right" }}>CTR (live)</th>
+            <th style={{ padding: "6px 0", textAlign: "right" }}>Engagement</th>
           </tr>
         </thead>
         <tbody>
@@ -81,6 +82,7 @@ function VariantTable({ title, stats }: { title: string; stats: ExperimentVarian
               <td style={{ padding: "6px 0", textAlign: "right" }}>{s.expandClicks}</td>
               <td style={{ padding: "6px 0", textAlign: "right" }}>{s.githubClicks}</td>
               <td style={{ padding: "6px 0", textAlign: "right" }}>{s.ctrPercent}%</td>
+              <td style={{ padding: "6px 0", textAlign: "right" }}>{s.engagementPercent}%</td>
             </tr>
           ))}
         </tbody>

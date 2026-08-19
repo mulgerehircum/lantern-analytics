@@ -51,8 +51,8 @@ describe("summarizeExperiment", () => {
       event({ name: "iframe_expand_click", metadata: { project_title: "PDFloom", variant: "iframe" } }),
     ]);
     expect(result.overall).toEqual([
-      { variant: "iframe", impressions: 2, liveClicks: 1, githubClicks: 1, expandClicks: 2, ctrPercent: 50 },
-      { variant: "video", impressions: 1, liveClicks: 0, githubClicks: 0, expandClicks: 0, ctrPercent: 0 },
+      { variant: "iframe", impressions: 2, liveClicks: 1, githubClicks: 1, expandClicks: 2, ctrPercent: 50, engagementPercent: 150 },
+      { variant: "video", impressions: 1, liveClicks: 0, githubClicks: 0, expandClicks: 0, ctrPercent: 0, engagementPercent: 0 },
     ]);
   });
 
@@ -66,12 +66,28 @@ describe("summarizeExperiment", () => {
     expect(result.byProject).toEqual([
       {
         project: "Dataroom",
-        variants: [{ variant: "video", impressions: 1, liveClicks: 0, githubClicks: 0, expandClicks: 0, ctrPercent: 0 }],
+        variants: [{ variant: "video", impressions: 1, liveClicks: 0, githubClicks: 0, expandClicks: 0, ctrPercent: 0, engagementPercent: 0 }],
       },
       {
         project: "PDFloom",
-        variants: [{ variant: "iframe", impressions: 1, liveClicks: 1, githubClicks: 0, expandClicks: 1, ctrPercent: 100 }],
+        variants: [{ variant: "iframe", impressions: 1, liveClicks: 1, githubClicks: 0, expandClicks: 1, ctrPercent: 100, engagementPercent: 200 }],
       },
+    ]);
+  });
+
+  it("computes engagementPercent from live + expand clicks, excluding github clicks", () => {
+    const result = summarizeExperiment([
+      event({ name: "card_variant_view", metadata: { project_title: "PDFloom", variant: "iframe" } }),
+      event({ name: "card_variant_view", metadata: { project_title: "PDFloom", variant: "iframe" } }),
+      event({ name: "card_variant_view", metadata: { project_title: "PDFloom", variant: "iframe" } }),
+      event({ name: "card_variant_view", metadata: { project_title: "PDFloom", variant: "iframe" } }),
+      event({ name: "project_link_click", metadata: { project_title: "PDFloom", link_type: "live", variant: "iframe" } }),
+      event({ name: "iframe_expand_click", metadata: { project_title: "PDFloom", variant: "iframe" } }),
+      event({ name: "project_link_click", metadata: { project_title: "PDFloom", link_type: "github", variant: "iframe" } }),
+      event({ name: "project_link_click", metadata: { project_title: "PDFloom", link_type: "github", variant: "iframe" } }),
+    ]);
+    expect(result.overall).toEqual([
+      { variant: "iframe", impressions: 4, liveClicks: 1, githubClicks: 2, expandClicks: 1, ctrPercent: 25, engagementPercent: 50 },
     ]);
   });
 
