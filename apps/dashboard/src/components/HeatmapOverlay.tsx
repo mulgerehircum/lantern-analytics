@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { theme, card } from "@/lib/theme";
 import type { HeatmapPoint } from "@/lib/heatmap";
 import { buildHeatmapGrid } from "@/lib/heatmap";
@@ -9,6 +9,18 @@ import { HeatmapGrid } from "./HeatmapGrid";
 const DIMENSIONS_TIMEOUT_MS = 8000;
 /** Defensive DOM-node bound, same spirit as the Events page's MAX_OCCURRENCE_ROWS. */
 const MAX_RENDERED_POINTS = 2000;
+
+/**
+ * Render the tracked page at a fixed "desktop" width, then visually scale it
+ * down to fit whatever width this card actually has — not the card's real
+ * width directly. Sites are responsive: a narrow iframe (e.g. this card's
+ * column inside the dashboard's layout) makes them reflow into a cramped,
+ * squeezed-looking layout that isn't representative of how the page really
+ * looks, and isn't what a click-density heatmap should be measured against
+ * anyway (clicks were recorded from real visitors on real desktop/mobile
+ * viewports, not "whatever width this card happens to be").
+ */
+const IFRAME_WIDTH = 1280;
 
 interface FrameDimensionsMessage {
   source: "lantern-tracker";
@@ -59,8 +71,21 @@ const FALLBACK_HEIGHT = 800;
  * that last case) — this falls back to the context-free density grid instead.
  */
 export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; path: string; points: HeatmapPoint[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(IFRAME_WIDTH);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [blocked, setBlocked] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setContainerWidth(width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     setDimensions(null);
@@ -84,17 +109,21 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
   }
 
   const shownPoints = points.slice(-MAX_RENDERED_POINTS);
-  const height = dimensions?.height ?? FALLBACK_HEIGHT;
+  const contentHeight = dimensions?.height ?? FALLBACK_HEIGHT;
+  const scale = containerWidth / IFRAME_WIDTH;
+  const scaledHeight = contentHeight * scale;
 
   return (
     <div style={card}>
-      <div style={{ maxHeight: "80vh", overflow: "auto", borderRadius: theme.radius.control, border: `1px solid ${theme.color.cardBorder}` }}>
-        <div style={{ position: "relative", width: "100%", height }}>
-          <iframe
-            src={`${siteUrl}${path}`}
-            title={`Live preview of ${path}`}
-            style={{ position: "absolute", inset: 0, width: "100%", height, border: "none" }}
-          />
+      <div ref={containerRef} style={{ maxHeight: "80vh", overflow: "auto", borderRadius: theme.radius.control, border: `1px solid ${theme.color.cardBorder}` }}>
+        <div style={{ position: "relative", width: "100%", height: scaledHeight }}>
+          <div style={{ position: "absolute", top: 0, left: 0, width: IFRAME_WIDTH, height: contentHeight, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+            <iframe
+              src={`${siteUrl}${path}`}
+              title={`Live preview of ${path}`}
+              style={{ width: IFRAME_WIDTH, height: contentHeight, border: "none" }}
+            />
+          </div>
           {dimensions && (
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
               {shownPoints.map((p, i) => (
