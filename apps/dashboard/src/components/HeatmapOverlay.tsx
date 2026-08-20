@@ -17,9 +17,23 @@ interface FrameDimensionsMessage {
   height: number;
 }
 
+/** Generous but bounded — a real page is never literally 0px or, say, several million pixels tall (that came up in practice: a transient bad measurement from a page with an animated/resizing background). */
+const MAX_SANE_DIMENSION = 30000;
+
 function isFrameDimensionsMessage(data: unknown): data is FrameDimensionsMessage {
   const record = data as Record<string, unknown> | null;
-  return typeof record === "object" && record !== null && record.source === "lantern-tracker" && record.type === "dimensions";
+  if (typeof record !== "object" || record === null || record.source !== "lantern-tracker" || record.type !== "dimensions") return false;
+  const { width, height } = record;
+  return (
+    typeof width === "number" &&
+    typeof height === "number" &&
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    width > 0 &&
+    height > 0 &&
+    width <= MAX_SANE_DIMENSION &&
+    height <= MAX_SANE_DIMENSION
+  );
 }
 
 const FALLBACK_HEIGHT = 800;
