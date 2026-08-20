@@ -197,6 +197,14 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
                       borderRadius: "50%",
                       background: `radial-gradient(circle, ${theme.color.brand} 0%, transparent 70%)`,
                       opacity: 0.35,
+                      // Position updates arrive throttled (~1 per animation
+                      // frame, plus cross-frame postMessage latency) rather
+                      // than continuously — without this, dots visibly snap
+                      // between positions instead of appearing to scroll.
+                      // will-change hints the browser to composite `top`
+                      // changes on their own layer instead of relayouting.
+                      transition: "top 60ms linear",
+                      willChange: "top",
                     }}
                   />
                 ))}

@@ -3,19 +3,34 @@ import { reportFrameDimensions, reportFrameScroll } from "../src/frame-report";
 
 function makeWindow(framed: boolean, scrollY = 0) {
   const listeners: Record<string, () => void> = {};
+  const listenerOptions: Record<string, { passive?: boolean } | undefined> = {};
   const postMessage = vi.fn();
   const win = {
     self: {},
     top: framed ? {} : undefined,
     scrollY,
     parent: { postMessage },
-    addEventListener: (type: string, listener: () => void) => {
+    addEventListener: (type: string, listener: () => void, options?: { passive?: boolean }) => {
       listeners[type] = listener;
+      listenerOptions[type] = options;
     },
   };
   // self === top when not framed
   if (!framed) win.top = win.self;
-  return { win, postMessage, listeners };
+  return { win, postMessage, listeners, listenerOptions };
+}
+
+/** Fake requestAnimationFrame: captures scheduled callbacks without auto-running them, for deterministic throttle tests. */
+function makeRaf() {
+  const pending: Array<() => void> = [];
+  const raf = (cb: () => void) => {
+    pending.push(cb);
+  };
+  const flush = () => {
+    const callbacks = pending.splice(0);
+    callbacks.forEach((cb) => cb());
+  };
+  return { raf, flush };
 }
 
 function makeDoc(readyState: string, scrollWidth: number, scrollHeight: number) {
@@ -94,50 +109,57 @@ describe("reportFrameDimensions", () => {
 describe("reportFrameScroll", () => {
   it("does nothing when not embedded (self === top)", () => {
     const { win, postMessage } = makeWindow(false);
-    reportFrameScroll(win);
+    const { raf } = makeRaf();
+    reportFrameScroll(win, raf);
     expect(postMessage).not.toHaveBeenCalled();
   });
 
   it("posts the initial scroll position immediately when embedded", () => {
     const { win, postMessage } = makeWindow(true, 120);
-    reportFrameScroll(win);
+    const { raf } = makeRaf();
+    reportFrameScroll(win, raf);
     expect(postMessage).toHaveBeenCalledWith({ source: "lantern-tracker", type: "scroll", scrollY: 120 }, "*");
   });
 
-  it("throttles rapid scroll events to one post per ~32ms window", () => {
-    vi.useFakeTimers();
+  it("registers the scroll listener as passive", () => {
+    const { win, listenerOptions } = makeWindow(true);
+    const { raf } = makeRaf();
+    reportFrameScroll(win, raf);
+    expect(listenerOptions.scroll).toEqual({ passive: true });
+  });
+
+  it("throttles rapid scroll events to one post per animation frame", () => {
     const { win, postMessage, listeners } = makeWindow(true, 0);
-    reportFrameScroll(win);
+    const { raf, flush } = makeRaf();
+    reportFrameScroll(win, raf);
     postMessage.mockClear();
 
     win.scrollY = 50;
     listeners.scroll();
     win.scrollY = 100;
-    listeners.scroll(); // rapid second scroll should not double-fire
-    expect(postMessage).not.toHaveBeenCalled(); // throttled, hasn't fired yet
+    listeners.scroll(); // rapid second scroll before the frame fires should not schedule a second one
+    expect(postMessage).not.toHaveBeenCalled(); // still waiting on the animation frame
 
-    vi.advanceTimersByTime(32);
+    flush();
     expect(postMessage).toHaveBeenCalledTimes(1);
     expect(postMessage).toHaveBeenCalledWith({ source: "lantern-tracker", type: "scroll", scrollY: 100 }, "*");
-    vi.useRealTimers();
   });
 
-  it("allows another post after the throttle window elapses", () => {
-    vi.useFakeTimers();
+  it("allows another post after the animation frame fires", () => {
     const { win, postMessage, listeners } = makeWindow(true, 0);
-    reportFrameScroll(win);
+    const { raf, flush } = makeRaf();
+    reportFrameScroll(win, raf);
     postMessage.mockClear();
 
     win.scrollY = 50;
     listeners.scroll();
-    vi.advanceTimersByTime(32);
+    flush();
 
     win.scrollY = 200;
     listeners.scroll();
-    vi.advanceTimersByTime(32);
+    flush();
 
     expect(postMessage).toHaveBeenCalledTimes(2);
     expect(postMessage).toHaveBeenLastCalledWith({ source: "lantern-tracker", type: "scroll", scrollY: 200 }, "*");
-    vi.useRealTimers();
   });
 });
