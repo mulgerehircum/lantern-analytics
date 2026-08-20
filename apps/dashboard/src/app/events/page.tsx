@@ -54,9 +54,20 @@ export default async function EventsPage({
   // scoped to the trailing ~30-day raw-event window (unlike those
   // aggregates), so the header says so explicitly rather than implying
   // these two sections share one time range.
+  //
+  // Clicks (contact_click, project_link_click, iframe_expand_click) rank
+  // above impressions (card_variant_view, section_view, ...) before falling
+  // back to recency — impressions fire on every page load and would
+  // otherwise flood this list, crowding out the actual clicks this lookup
+  // exists for.
   const customOccurrences = rawEvents.filter((e) => e.name);
   const occurrences: EventOccurrenceRow[] = [...customOccurrences]
-    .sort((a, b) => (parseEventTimestamp(b.SK) ?? 0) - (parseEventTimestamp(a.SK) ?? 0))
+    .sort((a, b) => {
+      const aIsClick = a.name!.endsWith("_click") ? 1 : 0;
+      const bIsClick = b.name!.endsWith("_click") ? 1 : 0;
+      if (aIsClick !== bIsClick) return bIsClick - aIsClick;
+      return (parseEventTimestamp(b.SK) ?? 0) - (parseEventTimestamp(a.SK) ?? 0);
+    })
     .slice(0, MAX_OCCURRENCE_ROWS)
     .map((e) => {
       const match = findSessionForEvent(e, sessions);

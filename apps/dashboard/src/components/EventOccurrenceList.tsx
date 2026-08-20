@@ -23,7 +23,7 @@ export function EventOccurrenceList({ rows, totalCount }: { rows: EventOccurrenc
     <div style={card}>
       <div style={{ fontWeight: theme.font.weight.semibold, fontSize: "0.85rem", marginBottom: "0.3rem" }}>Recent occurrences</div>
       <div style={{ fontSize: "0.72rem", color: theme.color.textMuted, marginBottom: "0.7rem" }}>
-        Showing {rows.length} of {totalCount} most recent occurrences · trailing ~30 days
+        Showing {rows.length} of {totalCount} occurrences (clicks prioritized) · trailing ~30 days
       </div>
       {rows.length === 0 ? (
         <p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>No custom events in the last ~30 days.</p>
