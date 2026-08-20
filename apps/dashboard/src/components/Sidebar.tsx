@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { theme } from "@/lib/theme";
+import { FUNNELS_ENABLED } from "@/lib/flags";
 import { ProjectSelector } from "./ProjectSelector";
 import { ThemeToggle } from "./ThemeToggle";
 
-export type View = "overview" | "pages" | "sources" | "events" | "sessions" | "experiments";
+export type View = "overview" | "pages" | "sources" | "events" | "sessions" | "experiments" | "funnels" | "heatmaps";
 
 /**
  * The dashboard's persistent left shell — logo, real site switcher, nav, and
@@ -78,6 +79,7 @@ export function Sidebar({
         <NavLink label="Events" href={`/events${qs}`} active={activeView === "events"} />
         <NavLink label="Sessions" href={`/sessions${qs}`} active={activeView === "sessions"} />
         <NavLink label="Experiments" href={`/experiments${qs}`} active={activeView === "experiments"} />
+        {FUNNELS_ENABLED && <NavLink label="Funnels" href={`/funnels${qs}`} active={activeView === "funnels"} />}
       </nav>
 
       <div style={{ height: 1, background: theme.color.sidebarBorder, marginBottom: "1.4rem" }} />
