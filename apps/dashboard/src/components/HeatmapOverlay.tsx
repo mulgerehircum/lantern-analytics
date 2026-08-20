@@ -137,6 +137,7 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
             <iframe
               src={`${siteUrl}${path}`}
               title={`Live preview of ${path}`}
+              scrolling="no"
               style={{ width: effectiveWidth, height: contentHeight, border: "none" }}
             />
           </div>
