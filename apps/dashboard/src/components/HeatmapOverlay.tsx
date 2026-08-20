@@ -65,7 +65,7 @@ const FALLBACK_HEIGHT = 800;
  * visitor's own device *at click time*, not of however tall this specific
  * viewing renders the preview.
  */
-const DISPLAY_HEIGHT_CAP = 6000;
+const DISPLAY_HEIGHT_CAP = 1080;
 
 /**
  * Live iframe of the tracked page with a click-density overlay on top.
