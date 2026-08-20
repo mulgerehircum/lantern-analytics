@@ -74,7 +74,7 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
 
   return (
     <div style={card}>
-      <div style={{ maxHeight: 600, overflow: "auto", borderRadius: theme.radius.control, border: `1px solid ${theme.color.cardBorder}` }}>
+      <div style={{ maxHeight: 1400, overflow: "auto", borderRadius: theme.radius.control, border: `1px solid ${theme.color.cardBorder}` }}>
         <div style={{ position: "relative", width: "100%", height }}>
           <iframe
             src={`${siteUrl}${path}`}
