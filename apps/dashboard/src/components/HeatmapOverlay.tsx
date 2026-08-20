@@ -19,8 +19,14 @@ const MAX_RENDERED_POINTS = 2000;
  * looks, and isn't what a click-density heatmap should be measured against
  * anyway (clicks were recorded from real visitors on real desktop/mobile
  * viewports, not "whatever width this card happens to be").
+ *
+ * Only ever scales DOWN, never up: on a normal-width browser this card's
+ * column is very likely wider than MIN_DESKTOP_WIDTH, and scaling the
+ * iframe up past its real size just to fill that extra space would render
+ * the page zoomed in beyond how it actually looks — worse than a bit of
+ * empty margin on the sides.
  */
-const IFRAME_WIDTH = 1280;
+const MIN_DESKTOP_WIDTH = 1280;
 
 interface FrameDimensionsMessage {
   source: "lantern-tracker";
@@ -83,7 +89,7 @@ const DISPLAY_HEIGHT_CAP = 6000;
  */
 export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; path: string; points: HeatmapPoint[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(IFRAME_WIDTH);
+  const [containerWidth, setContainerWidth] = useState(MIN_DESKTOP_WIDTH);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [blocked, setBlocked] = useState(false);
 
@@ -121,18 +127,22 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
 
   const shownPoints = points.slice(-MAX_RENDERED_POINTS);
   const contentHeight = Math.min(dimensions?.height ?? FALLBACK_HEIGHT, DISPLAY_HEIGHT_CAP);
-  const scale = containerWidth / IFRAME_WIDTH;
+  // Never render the iframe narrower than MIN_DESKTOP_WIDTH (avoids the
+  // squeeze bug), but never scale it up past 1:1 either (avoids the zoom
+  // bug) — effectiveWidth just grows to match a wider container instead.
+  const effectiveWidth = Math.max(containerWidth, MIN_DESKTOP_WIDTH);
+  const scale = containerWidth / effectiveWidth;
   const scaledHeight = contentHeight * scale;
 
   return (
     <div style={card}>
       <div ref={containerRef} style={{ maxHeight: "80vh", overflow: "auto", borderRadius: theme.radius.control, border: `1px solid ${theme.color.cardBorder}` }}>
         <div style={{ position: "relative", width: "100%", height: scaledHeight }}>
-          <div style={{ position: "absolute", top: 0, left: 0, width: IFRAME_WIDTH, height: contentHeight, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+          <div style={{ position: "absolute", top: 0, left: 0, width: effectiveWidth, height: contentHeight, transform: `scale(${scale})`, transformOrigin: "top left" }}>
             <iframe
               src={`${siteUrl}${path}`}
               title={`Live preview of ${path}`}
-              style={{ width: IFRAME_WIDTH, height: contentHeight, border: "none" }}
+              style={{ width: effectiveWidth, height: contentHeight, border: "none" }}
             />
           </div>
           {dimensions && (
