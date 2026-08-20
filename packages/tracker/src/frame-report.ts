@@ -68,3 +68,48 @@ export function reportFrameDimensions(win: FrameWindow, doc: FrameDocument): voi
     timer = setTimeout(post, 250);
   });
 }
+
+export interface FrameScrollMessage {
+  source: "lantern-tracker";
+  type: "scroll";
+  scrollY: number;
+}
+
+interface ScrollWindow {
+  self: unknown;
+  top: unknown;
+  scrollY: number;
+  parent: { postMessage: (message: FrameScrollMessage, targetOrigin: string) => void };
+  addEventListener: (type: string, listener: () => void) => void;
+}
+
+/**
+ * Reports this page's live vertical scroll position to whatever iframed it,
+ * throttled to roughly 30fps — cross-origin JS can't read an iframe's own
+ * scroll position from outside, so (same reasoning as reportFrameDimensions)
+ * the embedded page has to volunteer it itself. This is what lets the
+ * dashboard's heatmap overlay keep its dots pinned to the right spot as a
+ * visitor scrolls the embedded page inside its (fixed-height, natively
+ * scrolling) iframe box.
+ *
+ * Only when actually embedded (`win.self !== win.top`).
+ */
+export function reportFrameScroll(win: ScrollWindow): void {
+  if (win.self === win.top) return;
+
+  const post = () => {
+    win.parent.postMessage({ source: "lantern-tracker", type: "scroll", scrollY: win.scrollY }, "*");
+  };
+
+  let throttled = false;
+  win.addEventListener("scroll", () => {
+    if (throttled) return;
+    throttled = true;
+    setTimeout(() => {
+      throttled = false;
+      post();
+    }, 32);
+  });
+
+  post();
+}

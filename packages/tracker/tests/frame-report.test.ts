@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
-import { reportFrameDimensions } from "../src/frame-report";
+import { reportFrameDimensions, reportFrameScroll } from "../src/frame-report";
 
-function makeWindow(framed: boolean) {
+function makeWindow(framed: boolean, scrollY = 0) {
   const listeners: Record<string, () => void> = {};
   const postMessage = vi.fn();
   const win = {
     self: {},
     top: framed ? {} : undefined,
+    scrollY,
     parent: { postMessage },
     addEventListener: (type: string, listener: () => void) => {
       listeners[type] = listener;
@@ -86,6 +87,57 @@ describe("reportFrameDimensions", () => {
       { source: "lantern-tracker", type: "dimensions", width: 1000, height: 3000 },
       "*",
     );
+    vi.useRealTimers();
+  });
+});
+
+describe("reportFrameScroll", () => {
+  it("does nothing when not embedded (self === top)", () => {
+    const { win, postMessage } = makeWindow(false);
+    reportFrameScroll(win);
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("posts the initial scroll position immediately when embedded", () => {
+    const { win, postMessage } = makeWindow(true, 120);
+    reportFrameScroll(win);
+    expect(postMessage).toHaveBeenCalledWith({ source: "lantern-tracker", type: "scroll", scrollY: 120 }, "*");
+  });
+
+  it("throttles rapid scroll events to one post per ~32ms window", () => {
+    vi.useFakeTimers();
+    const { win, postMessage, listeners } = makeWindow(true, 0);
+    reportFrameScroll(win);
+    postMessage.mockClear();
+
+    win.scrollY = 50;
+    listeners.scroll();
+    win.scrollY = 100;
+    listeners.scroll(); // rapid second scroll should not double-fire
+    expect(postMessage).not.toHaveBeenCalled(); // throttled, hasn't fired yet
+
+    vi.advanceTimersByTime(32);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith({ source: "lantern-tracker", type: "scroll", scrollY: 100 }, "*");
+    vi.useRealTimers();
+  });
+
+  it("allows another post after the throttle window elapses", () => {
+    vi.useFakeTimers();
+    const { win, postMessage, listeners } = makeWindow(true, 0);
+    reportFrameScroll(win);
+    postMessage.mockClear();
+
+    win.scrollY = 50;
+    listeners.scroll();
+    vi.advanceTimersByTime(32);
+
+    win.scrollY = 200;
+    listeners.scroll();
+    vi.advanceTimersByTime(32);
+
+    expect(postMessage).toHaveBeenCalledTimes(2);
+    expect(postMessage).toHaveBeenLastCalledWith({ source: "lantern-tracker", type: "scroll", scrollY: 200 }, "*");
     vi.useRealTimers();
   });
 });

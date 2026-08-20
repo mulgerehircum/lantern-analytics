@@ -28,11 +28,33 @@ const MAX_RENDERED_POINTS = 2000;
  */
 const MIN_DESKTOP_WIDTH = 1280;
 
+/**
+ * Fixed simulated viewport height for the iframe — deliberately NOT derived
+ * from the tracked page's own measured content height. That was tried and
+ * broke: this portfolio's Hero section uses `min-height: 100vh`, so the
+ * page's own total height depends on whatever `100vh` resolves to *inside
+ * the iframe* — which is the iframe's own box height. Feed a measured
+ * height back into that box and Hero just grows to fill it, pushing the
+ * measured height up again next time — there's no fixed point, it diverges
+ * ("hero animation grid spans out of control"). A fixed, externally-chosen
+ * height (mimicking a normal browser window) sidesteps this entirely, the
+ * same way a real visitor's own fixed browser window height does. The
+ * iframe scrolls natively inside this fixed box; reportFrameScroll's live
+ * scroll-position messages are what let the dots overlay track that scroll.
+ */
+const IFRAME_HEIGHT = 1080;
+
 interface FrameDimensionsMessage {
   source: "lantern-tracker";
   type: "dimensions";
   width: number;
   height: number;
+}
+
+interface FrameScrollMessage {
+  source: "lantern-tracker";
+  type: "scroll";
+  scrollY: number;
 }
 
 /**
@@ -60,22 +82,27 @@ function isFrameDimensionsMessage(data: unknown): data is FrameDimensionsMessage
   );
 }
 
-const FALLBACK_HEIGHT = 800;
+function isFrameScrollMessage(data: unknown): data is FrameScrollMessage {
+  const record = data as Record<string, unknown> | null;
+  if (typeof record !== "object" || record === null || record.source !== "lantern-tracker" || record.type !== "scroll") return false;
+  return typeof record.scrollY === "number" && Number.isFinite(record.scrollY);
+}
 
 /**
- * Live iframe of the tracked page with a click-density overlay on top.
- * Sizing the overlay correctly requires the embedded page's real pixel
- * height, which cross-origin JS can't read from the iframe directly — the
- * tracker's own frame-report.ts posts it via postMessage when it detects
- * it's embedded (opt-in via data-heatmap).
+ * Live iframe of the tracked page (fixed viewport height, scrolls natively)
+ * with a click-density overlay on top. Placing each dot correctly requires
+ * two things cross-origin JS can't read from the iframe directly — the
+ * embedded page's real total height, and its current scroll position — so
+ * the tracker's frame-report.ts posts both via postMessage (opt-in via
+ * data-heatmap).
  *
  * The iframe itself must mount unconditionally, before any dimensions
  * message exists — otherwise the embedded page never gets a chance to load
  * and report back, so no message could ever arrive (an earlier version of
  * this component gated the iframe's very existence on `dimensions` already
  * being set, which meant it could never receive the message that sets it).
- * Only the overlay dots and exact height wait on `dimensions`; the iframe
- * renders at a reasonable fallback height in the meantime.
+ * Only the overlay dots wait on `dimensions`; the iframe itself doesn't
+ * depend on it at all (see IFRAME_HEIGHT above).
  *
  * If nothing arrives within DIMENSIONS_TIMEOUT_MS — the target site hasn't
  * opted in, hasn't shipped the updated tracker yet, or its CSP/X-Frame-Options
@@ -86,6 +113,7 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(MIN_DESKTOP_WIDTH);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [scrollY, setScrollY] = useState(0);
   const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
@@ -101,11 +129,15 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
 
   useEffect(() => {
     setDimensions(null);
+    setScrollY(0);
     setBlocked(false);
 
     function onMessage(e: MessageEvent) {
-      if (!isFrameDimensionsMessage(e.data)) return;
-      setDimensions({ width: e.data.width, height: e.data.height });
+      if (isFrameDimensionsMessage(e.data)) {
+        setDimensions({ width: e.data.width, height: e.data.height });
+      } else if (isFrameScrollMessage(e.data)) {
+        setScrollY(e.data.scrollY);
+      }
     }
     window.addEventListener("message", onMessage);
     const timer = setTimeout(() => setBlocked(true), DIMENSIONS_TIMEOUT_MS);
@@ -121,51 +153,60 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
   }
 
   const shownPoints = points.slice(-MAX_RENDERED_POINTS);
-  const contentHeight = 1080;
   // Never render the iframe narrower than MIN_DESKTOP_WIDTH (avoids the
   // squeeze bug), but never scale it up past 1:1 either (avoids the zoom
   // bug) — effectiveWidth just grows to match a wider container instead.
   const effectiveWidth = Math.max(containerWidth, MIN_DESKTOP_WIDTH);
   const scale = containerWidth / effectiveWidth;
-  const scaledHeight = contentHeight * scale;
+  const scaledHeight = IFRAME_HEIGHT * scale;
 
   return (
     <div style={card}>
-      <div ref={containerRef} style={{ maxHeight: "80vh", overflow: "auto", borderRadius: theme.radius.control, border: `1px solid ${theme.color.cardBorder}` }}>
+      <div ref={containerRef} style={{ borderRadius: theme.radius.control, border: `1px solid ${theme.color.cardBorder}`, overflow: "hidden" }}>
         <div style={{ position: "relative", width: "100%", height: scaledHeight }}>
-          <div style={{ position: "absolute", top: 0, left: 0, width: effectiveWidth, height: contentHeight, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: effectiveWidth,
+              height: IFRAME_HEIGHT,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+              overflow: "hidden",
+            }}
+          >
             <iframe
               src={`${siteUrl}${path}`}
               title={`Live preview of ${path}`}
-              scrolling="no"
-              style={{ width: effectiveWidth, height: contentHeight, border: "none" }}
+              style={{ width: effectiveWidth, height: IFRAME_HEIGHT, border: "none" }}
             />
+            {dimensions && (
+              <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+                {shownPoints.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      left: (p.xPct / 100) * effectiveWidth,
+                      top: (p.yPct / 100) * dimensions.height - scrollY,
+                      width: 26,
+                      height: 26,
+                      marginLeft: -13,
+                      marginTop: -13,
+                      borderRadius: "50%",
+                      background: `radial-gradient(circle, ${theme.color.brand} 0%, transparent 70%)`,
+                      opacity: 0.35,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-          {dimensions && (
-            <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-              {shownPoints.map((p, i) => (
-                <div
-                  key={i}
-                  style={{
-                    position: "absolute",
-                    left: `${p.xPct}%`,
-                    top: `${p.yPct}%`,
-                    width: 26,
-                    height: 26,
-                    marginLeft: -13,
-                    marginTop: -13,
-                    borderRadius: "50%",
-                    background: `radial-gradient(circle, ${theme.color.brand} 0%, transparent 70%)`,
-                    opacity: 0.35,
-                  }}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
       <p style={{ fontSize: "0.72rem", color: theme.color.textMuted, marginTop: "0.6rem", marginBottom: 0 }}>
-        {points.length} click{points.length === 1 ? "" : "s"} recorded for {path} in the last ~30 days
+        {points.length} click{points.length === 1 ? "" : "s"} recorded for {path} in the last ~30 days · scroll the preview to see clicks further down the page
       </p>
     </div>
   );

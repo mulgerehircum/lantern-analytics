@@ -10,7 +10,7 @@ import { buildCustomEvent } from "./track";
 import { enableSpaTracking } from "./spa";
 import { enableSessionRecording, getOrCreateSession, getPageCount, notifyPageview } from "./recording";
 import { computeClickPercent } from "./heatmap";
-import { reportFrameDimensions } from "./frame-report";
+import { reportFrameDimensions, reportFrameScroll } from "./frame-report";
 
 declare global {
   interface Window {
@@ -98,11 +98,13 @@ if (config?.recordEnabled && !isDoNotTrackEnabled() && !isIgnored()) {
 // Opt-in heatmap click tracking (`data-heatmap` on the script tag): fires a
 // reserved-name custom event per click with a page-relative position, and —
 // only when actually embedded in an iframe — reports this page's real
-// dimensions to the parent so the dashboard's overlay can size itself. Same
-// DNT/ignore standard as everything else.
+// dimensions and live scroll position to the parent, so the dashboard's
+// overlay can size itself and keep its dots pinned to the right spot as the
+// iframe scrolls. Same DNT/ignore standard as everything else.
 if (config?.heatmap && !isDoNotTrackEnabled() && !isIgnored()) {
   document.addEventListener("click", (e) => {
     track(HEATMAP_CLICK_EVENT_NAME, computeClickPercent(e, document.documentElement));
   });
   reportFrameDimensions(window, document);
+  reportFrameScroll(window);
 }
