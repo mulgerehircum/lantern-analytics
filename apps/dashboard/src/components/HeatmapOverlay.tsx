@@ -6,7 +6,7 @@ import type { HeatmapPoint } from "@/lib/heatmap";
 import { buildHeatmapGrid } from "@/lib/heatmap";
 import { HeatmapGrid } from "./HeatmapGrid";
 
-const DIMENSIONS_TIMEOUT_MS = 2000;
+const DIMENSIONS_TIMEOUT_MS = 5000;
 /** Defensive DOM-node bound, same spirit as the Events page's MAX_OCCURRENCE_ROWS. */
 const MAX_RENDERED_POINTS = 2000;
 
@@ -22,16 +22,27 @@ function isFrameDimensionsMessage(data: unknown): data is FrameDimensionsMessage
   return typeof record === "object" && record !== null && record.source === "lantern-tracker" && record.type === "dimensions";
 }
 
+const FALLBACK_HEIGHT = 800;
+
 /**
  * Live iframe of the tracked page with a click-density overlay on top.
  * Sizing the overlay correctly requires the embedded page's real pixel
  * height, which cross-origin JS can't read from the iframe directly — the
  * tracker's own frame-report.ts posts it via postMessage when it detects
- * it's embedded (opt-in via data-heatmap). If nothing arrives within
- * DIMENSIONS_TIMEOUT_MS — the target site hasn't opted in, hasn't shipped
- * the updated tracker yet, or its CSP/X-Frame-Options blocked the iframe
- * outright (browsers give no clean JS-visible signal for that last case) —
- * this falls back to the context-free density grid instead.
+ * it's embedded (opt-in via data-heatmap).
+ *
+ * The iframe itself must mount unconditionally, before any dimensions
+ * message exists — otherwise the embedded page never gets a chance to load
+ * and report back, so no message could ever arrive (an earlier version of
+ * this component gated the iframe's very existence on `dimensions` already
+ * being set, which meant it could never receive the message that sets it).
+ * Only the overlay dots and exact height wait on `dimensions`; the iframe
+ * renders at a reasonable fallback height in the meantime.
+ *
+ * If nothing arrives within DIMENSIONS_TIMEOUT_MS — the target site hasn't
+ * opted in, hasn't shipped the updated tracker yet, or its CSP/X-Frame-Options
+ * blocked the iframe outright (browsers give no clean JS-visible signal for
+ * that last case) — this falls back to the context-free density grid instead.
  */
 export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; path: string; points: HeatmapPoint[] }) {
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -54,17 +65,23 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
     };
   }, [siteUrl, path]);
 
-  if (dimensions) {
-    const shownPoints = points.slice(-MAX_RENDERED_POINTS);
-    return (
-      <div style={card}>
-        <div style={{ maxHeight: 600, overflow: "auto", borderRadius: theme.radius.control, border: `1px solid ${theme.color.cardBorder}` }}>
-          <div style={{ position: "relative", width: "100%", height: dimensions.height }}>
-            <iframe
-              src={`${siteUrl}${path}`}
-              title={`Live preview of ${path}`}
-              style={{ position: "absolute", inset: 0, width: "100%", height: dimensions.height, border: "none" }}
-            />
+  if (blocked && !dimensions) {
+    return <HeatmapGrid grid={buildHeatmapGrid(points)} note="Live preview unavailable — showing density grid instead." />;
+  }
+
+  const shownPoints = points.slice(-MAX_RENDERED_POINTS);
+  const height = dimensions?.height ?? FALLBACK_HEIGHT;
+
+  return (
+    <div style={card}>
+      <div style={{ maxHeight: 600, overflow: "auto", borderRadius: theme.radius.control, border: `1px solid ${theme.color.cardBorder}` }}>
+        <div style={{ position: "relative", width: "100%", height }}>
+          <iframe
+            src={`${siteUrl}${path}`}
+            title={`Live preview of ${path}`}
+            style={{ position: "absolute", inset: 0, width: "100%", height, border: "none" }}
+          />
+          {dimensions && (
             <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
               {shownPoints.map((p, i) => (
                 <div
@@ -84,18 +101,12 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
                 />
               ))}
             </div>
-          </div>
+          )}
         </div>
-        <p style={{ fontSize: "0.72rem", color: theme.color.textMuted, marginTop: "0.6rem", marginBottom: 0 }}>
-          {points.length} click{points.length === 1 ? "" : "s"} recorded for {path} in the last ~30 days
-        </p>
       </div>
-    );
-  }
-
-  if (blocked) {
-    return <HeatmapGrid grid={buildHeatmapGrid(points)} note="Live preview unavailable — showing density grid instead." />;
-  }
-
-  return <p style={{ color: theme.color.textFaint, fontSize: "0.82rem" }}>Loading live preview…</p>;
+      <p style={{ fontSize: "0.72rem", color: theme.color.textMuted, marginTop: "0.6rem", marginBottom: 0 }}>
+        {points.length} click{points.length === 1 ? "" : "s"} recorded for {path} in the last ~30 days
+      </p>
+    </div>
+  );
 }
