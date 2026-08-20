@@ -1,3 +1,4 @@
+import { HEATMAP_CLICK_EVENT_NAME } from "@lantern/shared";
 import { aggregateEvents } from "@/lib/aggregate";
 import { getHourlyRollups, getLiveRawEvents, getAllRawEvents, currentHourSK } from "@/lib/dynamodb";
 import { getSessionRecordings } from "@/lib/sessions";
@@ -60,7 +61,7 @@ export default async function EventsPage({
   // back to recency — impressions fire on every page load and would
   // otherwise flood this list, crowding out the actual clicks this lookup
   // exists for.
-  const customOccurrences = rawEvents.filter((e) => e.name);
+  const customOccurrences = rawEvents.filter((e) => e.name && e.name !== HEATMAP_CLICK_EVENT_NAME);
   const occurrences: EventOccurrenceRow[] = [...customOccurrences]
     .sort((a, b) => {
       const aIsClick = a.name!.endsWith("_click") ? 1 : 0;

@@ -6,6 +6,15 @@
  */
 
 export const MAX_EVENT_NAME_LENGTH = 64;
+
+/**
+ * Reserved custom-event name the tracker fires internally for heatmap click
+ * tracking (opt-in via `data-heatmap`) — never something a site's own code
+ * calls directly. Kept here (not just on one side) so the tracker and the
+ * dashboard's display-layer exclusions (see apps/dashboard/src/lib/summarize.ts)
+ * never drift apart.
+ */
+export const HEATMAP_CLICK_EVENT_NAME = "lantern_heatmap_click";
 export const MAX_METADATA_KEYS = 16;
 export const MAX_METADATA_KEY_LENGTH = 64;
 export const MAX_STRING_METADATA_VALUE_LENGTH = 256;

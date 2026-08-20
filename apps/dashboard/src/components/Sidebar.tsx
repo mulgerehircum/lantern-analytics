@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { theme } from "@/lib/theme";
-import { FUNNELS_ENABLED } from "@/lib/flags";
+import { FUNNELS_ENABLED, HEATMAPS_ENABLED } from "@/lib/flags";
 import { ProjectSelector } from "./ProjectSelector";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -80,6 +80,7 @@ export function Sidebar({
         <NavLink label="Sessions" href={`/sessions${qs}`} active={activeView === "sessions"} />
         <NavLink label="Experiments" href={`/experiments${qs}`} active={activeView === "experiments"} />
         {FUNNELS_ENABLED && <NavLink label="Funnels" href={`/funnels${qs}`} active={activeView === "funnels"} />}
+        {HEATMAPS_ENABLED && <NavLink label="Heatmaps" href={`/heatmaps${qs}`} active={activeView === "heatmaps"} />}
       </nav>
 
       <div style={{ height: 1, background: theme.color.sidebarBorder, marginBottom: "1.4rem" }} />

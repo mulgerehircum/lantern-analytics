@@ -3,6 +3,8 @@ export interface TrackerConfig {
   endpoint: string;
   /** True when the script tag carries `data-spa`: fire a pageview per client-side route change. */
   spa: boolean;
+  /** True when the script tag carries `data-heatmap`: track click positions for the dashboard's Heatmaps page. */
+  heatmap: boolean;
   /** This script's own resolved `src` — used to derive the lazy recording chunk's URL. */
   scriptSrc: string;
   /**
@@ -40,6 +42,7 @@ export function readConfig(): TrackerConfig | null {
     siteId,
     endpoint,
     spa: script.dataset.spa !== undefined,
+    heatmap: script.dataset.heatmap !== undefined,
     scriptSrc: script.src,
     recordEnabled: script.dataset.record !== undefined && !!recordEndpoint && !!recordToken,
     recordEndpoint,

@@ -1,3 +1,4 @@
+import { HEATMAP_CLICK_EVENT_NAME } from "@lantern/shared";
 import type { HourlyRollupItem } from "./dynamodb";
 import type { SessionRecordingItem } from "./sessions";
 
@@ -46,10 +47,15 @@ function summarizeCustomEvents(
   const dimensions: Record<string, Record<string, Record<string, number>>> = {};
 
   for (const rollup of rollups) {
+    // Heatmap click pings fire on every click sitewide (far higher volume
+    // than any real custom event) — they're infrastructure for the Heatmaps
+    // page, not something the site owner wants mixed into these tables.
     for (const [name, count] of Object.entries(rollup.customEvents ?? {})) {
+      if (name === HEATMAP_CLICK_EVENT_NAME) continue;
       totals[name] = (totals[name] ?? 0) + count;
     }
     for (const [name, byKey] of Object.entries(rollup.eventDimensions ?? {})) {
+      if (name === HEATMAP_CLICK_EVENT_NAME) continue;
       const targetName = (dimensions[name] ??= {});
       for (const [key, byValue] of Object.entries(byKey)) {
         const targetKey = (targetName[key] ??= {});
