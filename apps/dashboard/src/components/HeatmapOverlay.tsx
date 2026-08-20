@@ -35,8 +35,14 @@ interface FrameDimensionsMessage {
   height: number;
 }
 
-/** Generous but bounded — a real page is never literally 0px or, say, several million pixels tall (that came up in practice: a transient bad measurement from a page with an animated/resizing background). */
-const MAX_SANE_DIMENSION = 30000;
+/**
+ * Real page heights, measured directly (not through the tracker) across a
+ * few realistic widths, topped out around 6100px — so 10000 leaves real
+ * headroom for a genuinely long page while still catching the kind of wild
+ * outlier that showed up in practice (tens of millions of pixels from a
+ * transient bad measurement).
+ */
+const MAX_SANE_DIMENSION = 10000;
 
 function isFrameDimensionsMessage(data: unknown): data is FrameDimensionsMessage {
   const record = data as Record<string, unknown> | null;
