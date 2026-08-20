@@ -13,6 +13,7 @@ interface FrameWindow {
 }
 
 interface FrameDocument {
+  readyState: string;
   documentElement: { scrollWidth: number; scrollHeight: number };
 }
 
@@ -23,10 +24,18 @@ interface FrameDocument {
  * directly, so the embedded page has to volunteer this itself.
  *
  * Only when actually embedded (`win.self !== win.top`) — a normal top-level
- * page load must never post anything. Posts once immediately, then again on
- * a debounced resize so a parent frame stays roughly in sync as content
- * loads/reflows. `"*"` target origin is an accepted tradeoff: the payload is
- * just pixel dimensions, nothing sensitive.
+ * page load must never post anything.
+ *
+ * Waits for the `load` event (or fires immediately if already past it)
+ * rather than measuring the instant this function runs: this tracker script
+ * is a plain synchronous `<script src>` tag, which on a typical SPA host
+ * page sits below a deferred/module app bundle — meaning this can execute
+ * *before* the app has mounted anything into the DOM. Measuring immediately
+ * would report the height of an essentially empty page. A second post
+ * shortly after `load` catches content that finishes rendering just after
+ * (images, late layout shifts), then a debounced resize listener keeps the
+ * parent roughly in sync afterward. `"*"` target origin is an accepted
+ * tradeoff: the payload is just pixel dimensions, nothing sensitive.
  */
 export function reportFrameDimensions(win: FrameWindow, doc: FrameDocument): void {
   if (win.self === win.top) return;
@@ -43,7 +52,16 @@ export function reportFrameDimensions(win: FrameWindow, doc: FrameDocument): voi
     );
   };
 
-  post();
+  const postTwice = () => {
+    post();
+    setTimeout(post, 500);
+  };
+
+  if (doc.readyState === "complete") {
+    postTwice();
+  } else {
+    win.addEventListener("load", postTwice);
+  }
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   win.addEventListener("resize", () => {

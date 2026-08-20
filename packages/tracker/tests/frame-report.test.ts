@@ -17,28 +17,66 @@ function makeWindow(framed: boolean) {
   return { win, postMessage, listeners };
 }
 
+function makeDoc(readyState: string, scrollWidth: number, scrollHeight: number) {
+  return { readyState, documentElement: { scrollWidth, scrollHeight } };
+}
+
 describe("reportFrameDimensions", () => {
   it("does nothing when not embedded (self === top)", () => {
     const { win, postMessage } = makeWindow(false);
-    const doc = { documentElement: { scrollWidth: 1000, scrollHeight: 2000 } };
-    reportFrameDimensions(win, doc);
+    reportFrameDimensions(win, makeDoc("complete", 1000, 2000));
     expect(postMessage).not.toHaveBeenCalled();
   });
 
-  it("posts dimensions immediately when embedded", () => {
+  it("posts dimensions immediately when embedded and the document is already complete", () => {
     const { win, postMessage } = makeWindow(true);
-    const doc = { documentElement: { scrollWidth: 1000, scrollHeight: 2000 } };
-    reportFrameDimensions(win, doc);
+    reportFrameDimensions(win, makeDoc("complete", 1000, 2000));
     expect(postMessage).toHaveBeenCalledWith(
       { source: "lantern-tracker", type: "dimensions", width: 1000, height: 2000 },
       "*",
     );
   });
 
+  it("waits for the load event before posting when the document isn't complete yet", () => {
+    const { win, postMessage, listeners } = makeWindow(true);
+    // A bare "loading" scrollHeight — the SPA app bundle (a deferred/module
+    // script) hasn't mounted anything into the DOM yet at this point.
+    const doc = makeDoc("loading", 1000, 50);
+    reportFrameDimensions(win, doc);
+    expect(postMessage).not.toHaveBeenCalled();
+
+    // Simulates the app finishing its mount and growing the page before `load` fires.
+    doc.documentElement.scrollHeight = 3000;
+    listeners.load();
+    expect(postMessage).toHaveBeenCalledWith(
+      { source: "lantern-tracker", type: "dimensions", width: 1000, height: 3000 },
+      "*",
+    );
+  });
+
+  it("posts a second time 500ms after load, to catch content that settles just after", () => {
+    vi.useFakeTimers();
+    const { win, postMessage, listeners } = makeWindow(true);
+    const doc = makeDoc("loading", 1000, 50);
+    reportFrameDimensions(win, doc);
+
+    listeners.load();
+    postMessage.mockClear();
+    doc.documentElement.scrollHeight = 4000; // e.g. an image finished loading
+    vi.advanceTimersByTime(500);
+
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(
+      { source: "lantern-tracker", type: "dimensions", width: 1000, height: 4000 },
+      "*",
+    );
+    vi.useRealTimers();
+  });
+
   it("re-posts on a debounced resize", () => {
     vi.useFakeTimers();
     const { win, postMessage, listeners } = makeWindow(true);
-    const doc = { documentElement: { scrollWidth: 1000, scrollHeight: 2000 } };
+    const doc = makeDoc("complete", 1000, 2000);
     reportFrameDimensions(win, doc);
     postMessage.mockClear();
 

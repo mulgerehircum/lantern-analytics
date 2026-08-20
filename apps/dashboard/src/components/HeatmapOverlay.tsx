@@ -6,7 +6,7 @@ import type { HeatmapPoint } from "@/lib/heatmap";
 import { buildHeatmapGrid } from "@/lib/heatmap";
 import { HeatmapGrid } from "./HeatmapGrid";
 
-const DIMENSIONS_TIMEOUT_MS = 5000;
+const DIMENSIONS_TIMEOUT_MS = 8000;
 /** Defensive DOM-node bound, same spirit as the Events page's MAX_OCCURRENCE_ROWS. */
 const MAX_RENDERED_POINTS = 2000;
 
