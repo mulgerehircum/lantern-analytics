@@ -121,7 +121,7 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
   }
 
   const shownPoints = points.slice(-MAX_RENDERED_POINTS);
-  const contentHeight = dimensions?.height ?? FALLBACK_HEIGHT;
+  const contentHeight = 1080;
   // Never render the iframe narrower than MIN_DESKTOP_WIDTH (avoids the
   // squeeze bug), but never scale it up past 1:1 either (avoids the zoom
   // bug) — effectiveWidth just grows to match a wider container instead.
