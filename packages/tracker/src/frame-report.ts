@@ -31,11 +31,15 @@ interface FrameDocument {
  * is a plain synchronous `<script src>` tag, which on a typical SPA host
  * page sits below a deferred/module app bundle — meaning this can execute
  * *before* the app has mounted anything into the DOM. Measuring immediately
- * would report the height of an essentially empty page. A second post
- * shortly after `load` catches content that finishes rendering just after
- * (images, late layout shifts), then a debounced resize listener keeps the
- * parent roughly in sync afterward. `"*"` target origin is an accepted
- * tradeoff: the payload is just pixel dimensions, nothing sensitive.
+ * would report the height of an essentially empty page.
+ *
+ * Deliberately posts only once at `load` (plus on resize after that) rather
+ * than re-measuring again a moment later: a page with a continuously running
+ * animation (e.g. a canvas/SVG background) can have a `scrollHeight` that
+ * drifts over time on its own, unrelated to any real layout change — a
+ * delayed re-measurement risks sampling a worse number than the first one,
+ * not a better one. `"*"` target origin is an accepted tradeoff: the payload
+ * is just pixel dimensions, nothing sensitive.
  */
 export function reportFrameDimensions(win: FrameWindow, doc: FrameDocument): void {
   if (win.self === win.top) return;
@@ -52,15 +56,10 @@ export function reportFrameDimensions(win: FrameWindow, doc: FrameDocument): voi
     );
   };
 
-  const postTwice = () => {
-    post();
-    setTimeout(post, 500);
-  };
-
   if (doc.readyState === "complete") {
-    postTwice();
+    post();
   } else {
-    win.addEventListener("load", postTwice);
+    win.addEventListener("load", post);
   }
 
   let timer: ReturnType<typeof setTimeout> | undefined;

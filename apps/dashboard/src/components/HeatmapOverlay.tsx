@@ -49,6 +49,17 @@ function isFrameDimensionsMessage(data: unknown): data is FrameDimensionsMessage
 }
 
 const FALLBACK_HEIGHT = 800;
+/**
+ * Caps how tall the preview ever renders, independent of MAX_SANE_DIMENSION
+ * (which only rejects outright garbage). A page that legitimately reports
+ * something like 15-20k px — plausible for a long single-page site, or for
+ * one with an animated background whose bounding box doesn't perfectly
+ * settle — would otherwise make this card enormous. Dot placement is
+ * unaffected: xPct/yPct are percentages of whatever height was true on the
+ * visitor's own device *at click time*, not of however tall this specific
+ * viewing renders the preview.
+ */
+const DISPLAY_HEIGHT_CAP = 6000;
 
 /**
  * Live iframe of the tracked page with a click-density overlay on top.
@@ -109,7 +120,7 @@ export function HeatmapOverlay({ siteUrl, path, points }: { siteUrl: string; pat
   }
 
   const shownPoints = points.slice(-MAX_RENDERED_POINTS);
-  const contentHeight = dimensions?.height ?? FALLBACK_HEIGHT;
+  const contentHeight = Math.min(dimensions?.height ?? FALLBACK_HEIGHT, DISPLAY_HEIGHT_CAP);
   const scale = containerWidth / IFRAME_WIDTH;
   const scaledHeight = contentHeight * scale;
 

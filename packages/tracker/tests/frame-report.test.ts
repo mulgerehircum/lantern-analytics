@@ -54,7 +54,7 @@ describe("reportFrameDimensions", () => {
     );
   });
 
-  it("posts a second time 500ms after load, to catch content that settles just after", () => {
+  it("posts only once at load, not again after a delay (a page with a running animation could drift worse, not better)", () => {
     vi.useFakeTimers();
     const { win, postMessage, listeners } = makeWindow(true);
     const doc = makeDoc("loading", 1000, 50);
@@ -62,14 +62,10 @@ describe("reportFrameDimensions", () => {
 
     listeners.load();
     postMessage.mockClear();
-    doc.documentElement.scrollHeight = 4000; // e.g. an image finished loading
-    vi.advanceTimersByTime(500);
+    doc.documentElement.scrollHeight = 4000; // e.g. an animated background still moving
+    vi.advanceTimersByTime(5000);
 
-    expect(postMessage).toHaveBeenCalledTimes(1);
-    expect(postMessage).toHaveBeenCalledWith(
-      { source: "lantern-tracker", type: "dimensions", width: 1000, height: 4000 },
-      "*",
-    );
+    expect(postMessage).not.toHaveBeenCalled();
     vi.useRealTimers();
   });
 
