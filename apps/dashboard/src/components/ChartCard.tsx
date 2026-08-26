@@ -1,7 +1,7 @@
 import { card, theme } from "@/lib/theme";
 import type { DailyTrendPoint, MonthlyTrendPoint, PeriodComparison } from "@/lib/summarize";
 import { Breadcrumb } from "./Breadcrumb";
-import { DayNav, MonthNav } from "./PeriodNav";
+import { DayNav } from "./PeriodNav";
 import { HourNav } from "./HourNav";
 import { DailyTrendChart, MonthlyTrendChart, TimeSeriesChart } from "./TrendCharts";
 
@@ -68,8 +68,6 @@ export function ChartCard({
             <HourNav siteId={siteId} hour={selectedPeriod!} />
           ) : isDay ? (
             <DayNav siteId={siteId} day={selectedPeriod!} />
-          ) : selectedPeriod ? (
-            <MonthNav siteId={siteId} month={selectedPeriod} />
           ) : null}
         </div>
       )}
