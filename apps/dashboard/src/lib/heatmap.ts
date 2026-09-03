@@ -26,7 +26,7 @@ export interface HeatmapGrid {
   maxCount: number;
 }
 
-/** Buckets points into a cols x rows grid — the fallback renderer when the live iframe overlay can't be used. */
+/** Buckets points into a cols x rows grid - the fallback renderer when the live iframe overlay can't be used. */
 export function buildHeatmapGrid(points: HeatmapPoint[], cols = 20, rows = 20): HeatmapGrid {
   const counts: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(0) as number[]);
   let maxCount = 0;

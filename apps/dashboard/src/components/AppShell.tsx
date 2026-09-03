@@ -8,7 +8,7 @@ import { MobileNav } from "./MobileNav";
 /**
  * Shared page shell: Sidebar + content area with a title/filter-chip header.
  * Assembled per-page (not in layout.tsx) since only page.tsx components can
- * read searchParams in the App Router — each page still does its own data
+ * read searchParams in the App Router - each page still does its own data
  * fetching, this just replaces the old hand-rolled <main>/<h1> boilerplate
  * that used to be duplicated across all four pages.
  */

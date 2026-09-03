@@ -2,7 +2,7 @@ import { theme, card } from "@/lib/theme";
 import type { HeatmapGrid as HeatmapGridData } from "@/lib/heatmap";
 
 /**
- * Context-free density grid — no page content, just relative click
+ * Context-free density grid - no page content, just relative click
  * concentration. Renders whenever there's no data yet, and as the fallback
  * when HeatmapOverlay's live iframe can't be confirmed (see that
  * component's doc comment).

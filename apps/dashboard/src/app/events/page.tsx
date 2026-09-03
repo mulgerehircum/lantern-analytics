@@ -16,7 +16,7 @@ import type { EventOccurrenceRow } from "@/components/EventOccurrenceList";
 const MAX_OCCURRENCE_ROWS = 50;
 
 /**
- * All-time custom-event totals plus their metadata breakdown — same rollup +
+ * All-time custom-event totals plus their metadata breakdown - same rollup +
  * live-merge source as the Pages view (see that file's comment). Rows link
  * into Overview's real eventName / eventKey+eventValue filters.
  */
@@ -51,14 +51,14 @@ export default async function EventsPage({
   }));
 
   // Reverse lookup (lib/session-correlation.ts's event→session direction):
-  // individual firings, not the all-time aggregates above — necessarily
+  // individual firings, not the all-time aggregates above - necessarily
   // scoped to the trailing ~30-day raw-event window (unlike those
   // aggregates), so the header says so explicitly rather than implying
   // these two sections share one time range.
   //
   // Clicks (contact_click, project_link_click, iframe_expand_click) rank
   // above impressions (card_variant_view, section_view, ...) before falling
-  // back to recency — impressions fire on every page load and would
+  // back to recency - impressions fire on every page load and would
   // otherwise flood this list, crowding out the actual clicks this lookup
   // exists for.
   const customOccurrences = rawEvents.filter((e) => e.name && e.name !== HEATMAP_CLICK_EVENT_NAME);
@@ -91,7 +91,7 @@ export default async function EventsPage({
       title={
         <>
           {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
         </>
       }
     >

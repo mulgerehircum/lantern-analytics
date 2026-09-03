@@ -12,7 +12,7 @@ import { LocalDateTime } from "@/components/LocalDateTime";
 /**
  * Session replay detail page. Looks the session up via the same
  * `getSessionRecordings` call the list page uses rather than adding a second
- * DynamoDB access pattern — cheap at this project's traffic scale, same
+ * DynamoDB access pattern - cheap at this project's traffic scale, same
  * reasoning `getAllRawEvents` already relies on in lib/dynamodb.ts.
  */
 export default async function SessionReplayPage({
@@ -45,7 +45,7 @@ export default async function SessionReplayPage({
       title={
         <>
           {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
         </>
       }
     >
@@ -63,14 +63,14 @@ export default async function SessionReplayPage({
               <MetaField label="Started" value={<LocalDateTime iso={session.startedAt} />} />
               <MetaField label="Duration" value={formatDuration(session.durationMs)} />
               <MetaField label="Pages" value={session.pageCount} />
-              <MetaField label="Device" value={session.device ?? "—"} />
+              <MetaField label="Device" value={session.device ?? "-"} />
             </div>
-            {/* No fixed aspect-ratio here — ReplayPlayer measures this
+            {/* No fixed aspect-ratio here - ReplayPlayer measures this
                 container's actual width and constructs the (fixed-size,
                 non-resizing) rrweb player to match it, so forcing a
                 separate ratio on the container would just reintroduce the
                 mismatch/clipping bug this replaced. Plain block layout, not
-                flex — a flex item's "auto" width shrinks to content instead
+                flex - a flex item's "auto" width shrinks to content instead
                 of filling the container, which would make ReplayPlayer's
                 width measurement (taken before the player has any content)
                 read as ~0. */}

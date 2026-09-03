@@ -23,7 +23,7 @@ export const SITES: SiteInfo[] = [
   { siteId: "ukraine-warmap", name: "Ukraine Warmap", url: "https://ukraine-warmap.vercel.app" },
   { siteId: "dataroom-technical-assessment", name: "Dataroom (technical assessment)", url: "https://dataroom-technical-assessment.vercel.app" },
   { siteId: "noire-winery-landing-v1", name: "Noire Winery Landing v1", url: "https://noire-winery-landing-v1.vercel.app" },
-  // pdfloom (the backend) is a pure API with no pages — nothing to track;
+  // pdfloom (the backend) is a pure API with no pages - nothing to track;
   // only its frontend project is registered. noire-winery-landing (non-v1) is
   // excluded: its GitHub repo is archived and its Vercel deployment is
   // password-protected, so it can't run the tracker.

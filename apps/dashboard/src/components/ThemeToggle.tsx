@@ -10,7 +10,7 @@ const STORAGE_KEY = "lantern-theme";
  * server has no way to know the visitor's stored preference, so this
  * assumes "light" until mounted, then reads the real state from the DOM
  * (already set correctly pre-paint by layout.tsx's inline script) and syncs
- * to it — avoids a hydration mismatch without needing the server to guess.
+ * to it - avoids a hydration mismatch without needing the server to guess.
  */
 export function ThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -30,7 +30,7 @@ export function ThemeToggle() {
     try {
       localStorage.setItem(STORAGE_KEY, next ? "dark" : "light");
     } catch {
-      // Private browsing / storage disabled — the toggle still works for this page load, just doesn't persist.
+      // Private browsing / storage disabled - the toggle still works for this page load, just doesn't persist.
     }
   }
 

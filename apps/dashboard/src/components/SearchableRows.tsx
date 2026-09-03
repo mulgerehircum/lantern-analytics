@@ -6,14 +6,14 @@ import { theme } from "@/lib/theme";
 
 /**
  * Collapsed to `initialVisibleCount` rows behind a "Show N more" toggle by
- * default (same as the old ExpandableRows) — typing in the search box
+ * default (same as the old ExpandableRows) - typing in the search box
  * bypasses that cap entirely and searches the full row set instead, since
  * "find this specific thing" shouldn't require clicking "show more" first.
  *
  * Takes already-rendered `{key, node}` pairs, not raw row data: a
  * DataTableRow can carry a `renderKey` function (e.g. Countries' flag
  * lookup), and functions can't be passed as props across the server/client
- * boundary — the caller (a Server Component) renders each <Row> itself and
+ * boundary - the caller (a Server Component) renders each <Row> itself and
  * pairs it with its plain-string key for matching, so only strings and
  * already-built React elements ever cross the boundary.
  */

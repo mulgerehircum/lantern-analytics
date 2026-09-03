@@ -14,7 +14,7 @@ import type { CustomEventTimelineInput } from "@/lib/interaction-timeline";
  * player instance (so it and InteractionTimeline can both act on it), and
  * seeking to a deep-linked timestamp on first load. Fetches from the
  * dashboard's own /api/recordings route (never the Mac-mini receiver
- * directly — see that route's doc comment).
+ * directly - see that route's doc comment).
  */
 export function SessionReplay({
   siteId,
@@ -65,7 +65,7 @@ export function SessionReplay({
     };
   }, [siteId, sessionId]);
 
-  // Seeks once, the first time the player becomes ready — guarded so it
+  // Seeks once, the first time the player becomes ready - guarded so it
   // never re-fires on an unrelated re-render after the initial jump.
   useEffect(() => {
     if (!player || seekedRef.current || initialOffsetMs === undefined) return;

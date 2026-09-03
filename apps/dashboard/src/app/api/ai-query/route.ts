@@ -13,7 +13,7 @@ interface AiQueryRequestBody {
 /**
  * Server-side only, same reasoning as api/recordings/route.ts: GEMINI_API_KEY
  * never reaches the browser. Reuses the existing getHourlyRollups +
- * summarizeRollups pipeline unchanged — no new aggregation logic here, see
+ * summarizeRollups pipeline unchanged - no new aggregation logic here, see
  * docs/design.md's Phase 3 section.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // Gated here, not earlier: only requests that actually reach Gemini should
-  // count against the shared quota — a malformed/oversized request already
+  // count against the shared quota - a malformed/oversized request already
   // failed validation above without spending a slot.
   const rateLimit = checkRateLimit();
   if (!rateLimit.allowed) {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { answer } = await askQuestion(summary, question);
     return NextResponse.json({ answer, summary });
   } catch (err) {
-    // Covers Gemini API errors, rate limiting, and quota exhaustion — all
+    // Covers Gemini API errors, rate limiting, and quota exhaustion - all
     // surfaced the same way to the client: a clean 502, no leaking upstream
     // error internals.
     console.error("ai-query: Gemini call failed", err);

@@ -14,12 +14,12 @@ import type { SessionFilters } from "@/lib/session-filters";
 /**
  * Session list (Phase 2). Same conventions as the root dashboard page:
  * Server Component fetching DynamoDB directly, `?siteId=` query-param
- * routing (not `/[siteId]/...` — see repo decisions for why). The one bit of
- * client JS is <LocalDateTime> — timestamps need the viewer's own browser
+ * routing (not `/[siteId]/...` - see repo decisions for why). The one bit of
+ * client JS is <LocalDateTime> - timestamps need the viewer's own browser
  * timezone, which only the client knows.
  *
  * `variant` is attached per session (see lib/experiment.ts) by matching raw
- * card_variant_view events, not stored on the session item itself — so it's
+ * card_variant_view events, not stored on the session item itself - so it's
  * only ever available for the trailing ~30 days the raw events survive.
  */
 export default async function SessionsPage({
@@ -57,7 +57,7 @@ export default async function SessionsPage({
       title={
         <>
           {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
         </>
       }
     >
@@ -213,12 +213,12 @@ function SessionsTable({
                 <td style={{ padding: "0.55rem 0.6rem" }}>{formatDuration(s.durationMs)}</td>
                 <td style={{ padding: "0.55rem 0.6rem" }}>{s.pageCount}</td>
                 <td style={{ padding: "0.55rem 0.6rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>
-                  {s.path || "—"}
+                  {s.path || "-"}
                 </td>
                 <td style={{ padding: "0.55rem 0.6rem" }}>{s.referrer || "direct"}</td>
-                <td style={{ padding: "0.55rem 0.6rem" }}>{s.country ?? "—"}</td>
-                <td style={{ padding: "0.55rem 0.6rem" }}>{s.device ?? "—"}</td>
-                <td style={{ padding: "0.55rem 0.6rem", textTransform: "capitalize" }}>{s.variant ?? "—"}</td>
+                <td style={{ padding: "0.55rem 0.6rem" }}>{s.country ?? "-"}</td>
+                <td style={{ padding: "0.55rem 0.6rem" }}>{s.device ?? "-"}</td>
+                <td style={{ padding: "0.55rem 0.6rem", textTransform: "capitalize" }}>{s.variant ?? "-"}</td>
               </tr>
             ))}
           </tbody>

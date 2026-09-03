@@ -9,13 +9,13 @@ export interface EventOccurrenceRow {
   metadata?: Record<string, string | number | boolean>;
   country?: string;
   device?: string;
-  /** undefined = no matching session recorded — never captured, or already expired past its own retention. */
+  /** undefined = no matching session recorded - never captured, or already expired past its own retention. */
   sessionHref?: string;
 }
 
 /**
  * Individual custom-event firings (not the aggregate counts shown in the
- * tables above) — the reverse-lookup direction of lib/session-correlation.ts:
+ * tables above) - the reverse-lookup direction of lib/session-correlation.ts:
  * from one occurrence, straight to which session it happened in and when.
  */
 export function EventOccurrenceList({ rows, totalCount }: { rows: EventOccurrenceRow[]; totalCount: number }) {
@@ -45,8 +45,8 @@ export function EventOccurrenceList({ rows, totalCount }: { rows: EventOccurrenc
                   <LocalDateTime iso={row.timestampIso} />
                 </td>
                 <td style={{ padding: "0.5rem 0.6rem" }}>{formatCustomEventLabel(row.name, row.metadata)}</td>
-                <td style={{ padding: "0.5rem 0.6rem" }}>{row.country ?? "—"}</td>
-                <td style={{ padding: "0.5rem 0.6rem" }}>{row.device ?? "—"}</td>
+                <td style={{ padding: "0.5rem 0.6rem" }}>{row.country ?? "-"}</td>
+                <td style={{ padding: "0.5rem 0.6rem" }}>{row.device ?? "-"}</td>
                 <td style={{ padding: "0.5rem 0 0.5rem 0.6rem" }}>
                   {row.sessionHref ? (
                     <Link href={row.sessionHref} style={{ color: theme.color.brand, textDecoration: "none", fontWeight: theme.font.weight.semibold }}>

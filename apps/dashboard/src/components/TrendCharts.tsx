@@ -5,13 +5,13 @@ import type { DailyTrendPoint, MonthlyTrendPoint } from "@/lib/summarize";
 import { HourBar } from "./HourBar";
 
 /**
- * The three bar-chart renderers for the Overview chart card — one per drill
+ * The three bar-chart renderers for the Overview chart card - one per drill
  * depth (root/month/day), rendered by ChartCard, never more than one at a
- * time. Dependency-free — no charting library — every bar is a Link that
+ * time. Dependency-free - no charting library - every bar is a Link that
  * drills one level deeper and gets prefetched on hover/viewport-entry.
  *
  * Pixel heights, not CSS percentages: each bar's parent is the Link wrapping
- * it, which has no explicit height of its own — a `%` height resolves
+ * it, which has no explicit height of its own - a `%` height resolves
  * against that undefined height and collapses to ~0.
  */
 const BAR_AREA_PX = 80;

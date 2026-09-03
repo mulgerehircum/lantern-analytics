@@ -9,7 +9,7 @@ import { DataTableCard } from "@/components/DataTableCard";
 import type { DataTableRow } from "@/components/DataTableCard";
 
 /**
- * All-time per-referrer pageview counts — same rollup + live-merge source as
+ * All-time per-referrer pageview counts - same rollup + live-merge source as
  * the Pages view (see that file's comment). Rows link into Overview's real
  * referrer filter.
  */
@@ -42,7 +42,7 @@ export default async function SourcesPage({
       title={
         <>
           {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
         </>
       }
     >

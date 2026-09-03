@@ -7,7 +7,7 @@ import { AppShell } from "@/components/AppShell";
 
 /**
  * Dedicated view for the portfolio's live-iframe-vs-video card experiment
- * (see my-portfolio's utils/experiment.ts) — impressions, clicks, and CTR per
+ * (see my-portfolio's utils/experiment.ts) - impressions, clicks, and CTR per
  * variant, overall and broken down per project. Built from raw events (see
  * lib/experiment.ts), so coverage is the trailing ~30 days, same as the
  * dashboard's dimension filters.
@@ -34,7 +34,7 @@ export default async function ExperimentsPage({
       title={
         <>
           {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
         </>
       }
     >

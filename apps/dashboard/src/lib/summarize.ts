@@ -48,7 +48,7 @@ function summarizeCustomEvents(
 
   for (const rollup of rollups) {
     // Heatmap click pings fire on every click sitewide (far higher volume
-    // than any real custom event) — they're infrastructure for the Heatmaps
+    // than any real custom event) - they're infrastructure for the Heatmaps
     // page, not something the site owner wants mixed into these tables.
     for (const [name, count] of Object.entries(rollup.customEvents ?? {})) {
       if (name === HEATMAP_CLICK_EVENT_NAME) continue;
@@ -91,11 +91,11 @@ function summarizeCustomEvents(
 /**
  * Note on uniques: each hourly rollup's `uniques` is a count of pageviews
  * flagged `isNewVisit` (packages/tracker/src/visit.ts), decided once per
- * real page load — never per hour. Summing it across any range of rollups
+ * real page load - never per hour. Summing it across any range of rollups
  * is therefore an exact total, unlike the old distinct-visitorHash-per-hour
  * approach this replaced (that one genuinely double-counted a visitor
  * active across an hour boundary, and inflated further across days because
- * visitorHash's salt rotates daily — see dynamodb-schema.md and the repo
+ * visitorHash's salt rotates daily - see dynamodb-schema.md and the repo
  * history around the "uniques from one country" investigation).
  */
 export function summarizeRollups(rollups: HourlyRollupItem[]): DashboardSummary {
@@ -108,7 +108,7 @@ export function summarizeRollups(rollups: HourlyRollupItem[]): DashboardSummary 
   const devices = toSortedEntries(mergeMaps(rollups.map((r) => r.devices)), "device");
 
   // `hour` is a real ISO timestamp (start of that UTC hour), not the raw
-  // "2026-08-11#21" rollup-key fragment — the chart needs an actual Date to
+  // "2026-08-11#21" rollup-key fragment - the chart needs an actual Date to
   // format in the viewer's own local timezone (see LocalDateTime/HourBar),
   // and "#" was never meant to be user-facing.
   const timeSeries = [...rollups]
@@ -131,7 +131,7 @@ export function summarizeRollups(rollups: HourlyRollupItem[]): DashboardSummary 
 }
 
 export interface PeriodComparison {
-  /** null when the previous period had 0 — a percent change from zero isn't meaningful (would be Infinity/NaN). */
+  /** null when the previous period had 0 - a percent change from zero isn't meaningful (would be Infinity/NaN). */
   pageviewsDeltaPercent: number | null;
   uniquesDeltaPercent: number | null;
 }
@@ -164,9 +164,9 @@ export interface DailyTrendPoint {
 /**
  * Shared grouping logic for both trend functions below: slices each rollup's
  * SK (e.g. "AGG#2026-08-15#14") down to `sliceLength` characters after the
- * "AGG#" prefix — 7 for a month ("2026-08"), 10 for a day ("2026-08-15") —
+ * "AGG#" prefix - 7 for a month ("2026-08"), 10 for a day ("2026-08-15") -
  * and sums pageviews/uniques per group. Same cross-hour-uniques
- * approximation caveat as summarizeRollups above — this sums already-
+ * approximation caveat as summarizeRollups above - this sums already-
  * approximate per-hour unique counts, not a true distinct count.
  */
 function groupBySkPrefix(rollups: HourlyRollupItem[], sliceLength: number): Map<string, { pageviews: number; uniques: number }> {
@@ -206,13 +206,13 @@ export interface SessionsSummary {
 }
 
 /**
- * Aggregate-only summary of session recordings — never per-session detail
+ * Aggregate-only summary of session recordings - never per-session detail
  * (no visitorHash, no per-session path sequence, no storageRef). Feeds the
  * AI insights layer with real on-site behavior (how long people stay, how
  * deep they go, where they land) that pageview/rollup counts alone can't
  * show. See docs/design.md's Phase 3 section.
  *
- * Unlike summarizeRollups, this has no period-scoping input — sessions come
+ * Unlike summarizeRollups, this has no period-scoping input - sessions come
  * from getSessionRecordings(siteId), which returns all-time data (see that
  * function's comment); the AI insights caller may be viewing a narrower
  * period than this summary covers.

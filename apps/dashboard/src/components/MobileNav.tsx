@@ -3,12 +3,12 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 
-/** Must match Sidebar.tsx's <aside> width — hiding the drawer means offsetting it fully off-screen. */
+/** Must match Sidebar.tsx's <aside> width - hiding the drawer means offsetting it fully off-screen. */
 const SIDEBAR_WIDTH = 250;
 
 /**
  * Wraps the already-rendered <Sidebar> output (pre-rendered JSX crossing the
- * boundary, same pattern as SearchableRows/ExportCsvButton — no raw nav data
+ * boundary, same pattern as SearchableRows/ExportCsvButton - no raw nav data
  * needed here, just a place to toggle visibility). Below the 768px
  * breakpoint (see the <style> block in layout.tsx), the sidebar becomes an
  * off-canvas drawer behind this hamburger button; above it, the button is
@@ -16,7 +16,7 @@ const SIDEBAR_WIDTH = 250;
  *
  * The drawer's open/closed position is driven by an inline `left` style
  * computed straight from React state, not by toggling a CSS class that sets
- * `transform` — a transform-based version of this didn't reliably animate,
+ * `transform` - a transform-based version of this didn't reliably animate,
  * and `left` is trivial to verify (real layout position via
  * getBoundingClientRect, not just a computed-style string) and universally
  * supported with zero specificity/compositing surprises.

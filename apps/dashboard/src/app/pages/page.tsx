@@ -11,7 +11,7 @@ import type { DataTableRow } from "@/components/DataTableCard";
 /**
  * All-time per-path pageview counts, sourced straight from the AGG# rollups
  * (unlimited history, unlike the dimension-filtered ~30-day raw-event
- * window) — same live-current-hour merge as the Overview's all-time view, so
+ * window) - same live-current-hour merge as the Overview's all-time view, so
  * totals stay consistent between the two. Rows link into Overview's real
  * path filter (lib/filter-ui.ts) rather than duplicating filtering here.
  */
@@ -44,7 +44,7 @@ export default async function PagesPage({
       title={
         <>
           {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
         </>
       }
     >

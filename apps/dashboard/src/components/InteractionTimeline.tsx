@@ -11,7 +11,7 @@ import type { CustomEventTimelineInput, RrwebClickTimelineInput } from "@/lib/in
 /**
  * Resolves a rrweb mirror node to a short human label. `null` means the id
  * was never rebuilt into the live DOM (stale/pruned id, or a click that
- * predates enough of the recording being processed) — that click gets
+ * predates enough of the recording being processed) - that click gets
  * dropped from the timeline entirely rather than shown as a placeholder.
  */
 function buildClickLabel(node: Node | null): string | null {
@@ -38,7 +38,7 @@ function formatOffset(ms: number): string {
 /**
  * Merged, clickable interaction list for a session's replay: custom-event
  * tracking (rich labels) plus rrweb-reconstructed clicks (full coverage,
- * generic labels), deduped — see lib/interaction-timeline.ts. Click resolution
+ * generic labels), deduped - see lib/interaction-timeline.ts. Click resolution
  * (mirror.getNode) only works once the player has mounted enough of the
  * recording to have built its live DOM, so this renders nothing until
  * `player` is non-null.
@@ -77,7 +77,7 @@ export function InteractionTimeline({
 
   // This panel lives nested inside the session-detail page's dark "theater"
   // box (a fixed oklch(0.22...) background used for the video regardless of
-  // the dashboard's own light/dark mode toggle) — theme.color.* text tokens
+  // the dashboard's own light/dark mode toggle) - theme.color.* text tokens
   // are calibrated for the *light* card background used everywhere else in
   // the app and would be near-invisible here, so this uses its own
   // dark-panel-appropriate palette instead of the shared theme tokens.

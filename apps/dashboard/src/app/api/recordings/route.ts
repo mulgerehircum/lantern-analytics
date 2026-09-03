@@ -5,7 +5,7 @@ import { getSessionRecordings } from "@/lib/sessions";
  * The dashboard's first-ever API route, and its first-ever outbound fetch
  * that isn't the AWS SDK talking to DynamoDB. Deliberately server-side only:
  * the Mac-mini receiver's URL and read token (RECORDING_RECEIVER_URL,
- * RECORDING_READ_TOKEN) must never reach the browser — see
+ * RECORDING_READ_TOKEN) must never reach the browser - see
  * apps/dashboard/docs/design.md's Phase 2 addition note. ReplayPlayer (a
  * client component, since rrweb-player needs a real DOM) calls this route
  * instead of the receiver directly.
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // Resolve storageRef server-side from DynamoDB rather than trusting
-  // anything client-supplied — same defense-in-depth as
+  // anything client-supplied - same defense-in-depth as
   // packages/ingestion/src/session-meta-validate.ts, which computes
   // storageRef itself rather than accepting one from the ingest payload.
   const sessions = await getSessionRecordings(siteId);

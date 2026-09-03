@@ -7,11 +7,11 @@ import { ThemeToggle } from "./ThemeToggle";
 export type View = "overview" | "pages" | "sources" | "events" | "sessions" | "experiments" | "funnels" | "heatmaps";
 
 /**
- * The dashboard's persistent left shell — logo, real site switcher, nav, and
+ * The dashboard's persistent left shell - logo, real site switcher, nav, and
  * a decorative "Filters" section (per the design handoff: those fields are
  * NOT wired to lib/filter.ts in this pass; real filtering happens via the
  * data-table row clicks and the "Path contains…" fallback input on Overview).
- * Server Component, no client JS — same convention as the rest of the app.
+ * Server Component, no client JS - same convention as the rest of the app.
  */
 export function Sidebar({
   siteId,
@@ -35,7 +35,7 @@ export function Sidebar({
         padding: "1.8rem 1.2rem",
         // sticky + height (not minHeight) pins the sidebar to the viewport as
         // the page scrolls, rather than just growing to at least one
-        // viewport tall — with minHeight alone, a page taller than 100vh
+        // viewport tall - with minHeight alone, a page taller than 100vh
         // left the sidebar's own background stopping at the first screen
         // (its wrapping div in MobileNav still stretched to the page's full
         // height via flex, but nothing made *this* element fill that space

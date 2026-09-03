@@ -5,9 +5,9 @@ import { findCustomEventsForSession, DEFAULT_MATCH_TOLERANCE_MS } from "./sessio
 /**
  * Summarizes the portfolio's live-iframe-vs-video card experiment (see
  * my-portfolio's utils/experiment.ts) from raw events. Rollups can't answer
- * this — eventDimensions flattens project_title and variant into separate
+ * this - eventDimensions flattens project_title and variant into separate
  * per-key breakdowns, losing the join between "this impression/click was for
- * project X under variant Y" — so this reads card_variant_view (impression),
+ * project X under variant Y" - so this reads card_variant_view (impression),
  * project_link_click (click), and iframe_expand_click (iframe-variant modal
  * open) EVENT# items directly. Same ~30-day raw-event TTL coverage limit as
  * the dashboard's dimension filters.
@@ -18,7 +18,7 @@ export interface ExperimentVariantStats {
   impressions: number;
   liveClicks: number;
   githubClicks: number;
-  /** Clicks that opened the live-site iframe modal (iframe variant only — see trackIframeExpand). */
+  /** Clicks that opened the live-site iframe modal (iframe variant only - see trackIframeExpand). */
   expandClicks: number;
   /** liveClicks / impressions, as a percentage rounded to 1 decimal. */
   ctrPercent: number;
@@ -27,7 +27,7 @@ export interface ExperimentVariantStats {
    * decimal. Broader than ctrPercent: counts expanding the live-site iframe
    * modal as engagement alongside clicking through via the Link anchor, so
    * the iframe variant isn't penalized for offering an in-card way to engage
-   * that the video variant doesn't have. GitHub clicks are excluded — that's
+   * that the video variant doesn't have. GitHub clicks are excluded - that's
    * a click off the card unrelated to the live-site treatment being tested.
    */
   engagementPercent: number;
@@ -141,12 +141,12 @@ export function summarizeExperiment(events: RawEventRecordWithKey[]): Experiment
  * Attaches each session's experiment variant (if any) by matching its
  * visitorHash against card_variant_view impressions that fall within the
  * session's time window (see lib/session-correlation.ts for the shared
- * matching logic — this is direction 1, session → its events, filtered down
+ * matching logic - this is direction 1, session → its events, filtered down
  * to impressions and taking the earliest qualifying one). Sessions with no
  * matching impression (visitor never saw an experiment-eligible card,
  * session predates the experiment, or the raw event has already expired
- * past its TTL) get no `variant` field — distinct from a session that saw
- * the "video" variant, so callers can render "—" rather than mislabel it.
+ * past its TTL) get no `variant` field - distinct from a session that saw
+ * the "video" variant, so callers can render "-" rather than mislabel it.
  */
 export function attachVariantToSessions(
   sessions: SessionRecordingItem[],

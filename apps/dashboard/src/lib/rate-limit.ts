@@ -1,7 +1,7 @@
 /**
  * In-memory, per-instance rate limiter guarding the AI query route's shared
  * Gemini quota. Deliberately global, not per-IP/per-caller: the resource
- * being protected — Gemini's account-level free-tier quota — is itself
+ * being protected - Gemini's account-level free-tier quota - is itself
  * global and shared across every caller, and this route has no
  * authenticated identity to key a per-caller limit on anyway (see
  * docs/design.md's Phase 3 section: "No auth exists on this route yet").
@@ -10,7 +10,7 @@
  *
  * State is process-local: a cold start or a second concurrent Vercel
  * function instance resets or bypasses it. Accepted as a best-effort
- * throttle rather than a hard guarantee — it still meaningfully slows a
+ * throttle rather than a hard guarantee - it still meaningfully slows a
  * single abusive script hitting a warm instance repeatedly, at zero added
  * infra. A DynamoDB- or Upstash-backed counter would be a real distributed
  * limiter, but the dashboard's DynamoDB credentials are deliberately

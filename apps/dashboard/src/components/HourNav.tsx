@@ -7,12 +7,12 @@ import { shiftHour, formatHourLabel } from "@/lib/months";
 
 /**
  * Secondary prev/next affordance for the hour-level drill-down, next to
- * Breadcrumb in the chart card (which now owns "go up a level" — this
+ * Breadcrumb in the chart card (which now owns "go up a level" - this
  * dropped its old "(up to X)" trailing link). A client component: an hour
  * boundary is exactly the granularity where UTC-vs-local timezone actually
  * matters (a "21:00 UTC" bucket is a different wall-clock hour depending on
  * who's looking), unlike month/day labels which stay pure UTC string math.
- * Shifting itself still moves by UTC hour buckets — that's the real unit of
+ * Shifting itself still moves by UTC hour buckets - that's the real unit of
  * stored data; only the displayed label localizes. SSRs the UTC-labeled
  * fallback (formatHourLabel) first, swaps to the browser's local time after
  * mount, same pattern as LocalDateTime/HourBar.
@@ -24,7 +24,7 @@ export function HourNav({ siteId, hour }: { siteId: string; hour: string }) {
   const [labels, setLabels] = useState<{ prev: string; next: string } | null>(null);
 
   useEffect(() => {
-    // dateStyle/timeStyle "short" — an hour bucket always lands exactly on
+    // dateStyle/timeStyle "short" - an hour bucket always lands exactly on
     // the hour, so the bare toLocaleString() default's seconds are always a
     // redundant ":00".
     const toLocal = (h: string) => new Date(`${h}:00:00.000Z`).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });

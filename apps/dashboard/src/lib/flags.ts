@@ -1,6 +1,6 @@
 /**
  * Server-only feature flags, read from env vars at request time (not
- * NEXT_PUBLIC_ — every consumer here is a Server Component). Funnels ships
+ * NEXT_PUBLIC_ - every consumer here is a Server Component). Funnels ships
  * behind one: its first real-data pass showed most cross-event joins
  * returning 0, because visitorHash rotates daily (see dynamodb.ts) and this
  * site's traffic is low enough that a click and its preceding impression

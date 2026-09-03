@@ -1,7 +1,7 @@
 import { SITES } from "@/lib/sites";
 import { theme } from "@/lib/theme";
 
-/** Shared inline-style constant for form fields — used by ProjectSelector
+/** Shared inline-style constant for form fields - used by ProjectSelector
  * and the sessions pages' VariantFilterForm, keeping their controls visually
  * consistent without a component library (see docs/design.md). */
 export const fieldStyle: React.CSSProperties = {
@@ -12,17 +12,17 @@ export const fieldStyle: React.CSSProperties = {
 };
 
 /**
- * Project selector — a plain GET form, no client JS. Submitting navigates to
+ * Project selector - a plain GET form, no client JS. Submitting navigates to
  * `${basePath}?siteId=<id>`, clearing any other query params: switching
  * projects is a "start fresh here" action (see page.tsx's original comment on
  * this same behavior). `basePath` lets the sessions pages reuse this control
  * while landing back on `/sessions` instead of `/`.
  *
  * The design mockup's sidebar site-picker shows no separate submit control
- * (implying a live-onChange interaction) — this app has no client JS on this
+ * (implying a live-onChange interaction) - this app has no client JS on this
  * form, so a real submit button has to stay visible. Shrunk to a small arrow
  * icon-button to fit the sidebar's visual weight rather than dropped
- * entirely — a deliberate, documented fidelity deviation.
+ * entirely - a deliberate, documented fidelity deviation.
  */
 export function ProjectSelector({
   siteId,

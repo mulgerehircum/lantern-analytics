@@ -8,7 +8,7 @@ type Status = "idle" | "loading" | "answered" | "error";
 
 /**
  * The first real client-side fetch in this dashboard (everything else is
- * server-rendered + query-param navigation) — POST /api/ai-query is a real
+ * server-rendered + query-param navigation) - POST /api/ai-query is a real
  * HTTP route specifically because this needs to run from the browser, see
  * docs/design.md's Phase 3 section. Client-side pre-validation (empty/too
  * long) happens before the fetch so a doomed request never spends one of the
@@ -45,7 +45,7 @@ export function AiQueryBox({ siteId, monthPrefix }: { siteId: string; monthPrefi
         if (res.status === 429) {
           const seconds = Number(res.headers.get("Retry-After")) || null;
           setRetryAfter(seconds);
-          setError(seconds ? `Rate limited — try again in ${seconds}s.` : "Rate limited — try again shortly.");
+          setError(seconds ? `Rate limited - try again in ${seconds}s.` : "Rate limited - try again shortly.");
         } else {
           setError(body.error ?? "AI query failed, try again shortly.");
         }
@@ -97,9 +97,43 @@ export function AiQueryBox({ siteId, monthPrefix }: { siteId: string; monthPrefi
           {status === "loading" ? "Asking…" : "Ask"}
         </button>
       </form>
-      <div style={{ fontSize: "0.72rem", color: theme.color.textMuted, marginTop: "0.3rem" }}>
-        {question.length}/{MAX_QUESTION_LENGTH}
-        {tooLong && " — too long"}
+      <div
+        style={{ fontSize: "0.72rem", color: theme.color.textMuted, marginTop: "0.3rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+      >
+        <span>
+          {question.length} / {MAX_QUESTION_LENGTH} chars
+          {tooLong && " - too long"}
+        </span>
+        <span
+          style={{
+            border: `1px solid ${theme.color.fieldBorder}`,
+            borderRadius: theme.radius.small,
+            padding: "0 0.35rem",
+            fontSize: "0.68rem",
+          }}
+        >
+          ⌘K
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.6rem" }}>
+        {["Referrer conversion comparison", "Geolocation drop-offs"].map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            onClick={() => setQuestion(suggestion)}
+            style={{
+              fontSize: "0.72rem",
+              color: theme.color.brandTintTextStrong,
+              background: theme.color.brandTintBg,
+              border: "none",
+              borderRadius: theme.radius.pill,
+              padding: "0.25rem 0.6rem",
+              cursor: "pointer",
+            }}
+          >
+            {suggestion}
+          </button>
+        ))}
       </div>
 
       {status === "answered" && answer && (

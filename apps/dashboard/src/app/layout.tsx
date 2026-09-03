@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 /**
- * First real global stylesheet in the app — needed because inline styles
+ * First real global stylesheet in the app - needed because inline styles
  * (used everywhere else) beat any CSS rule by specificity, so a media query
  * genuinely can't be expressed inline (the same lesson learned the hard way
  * with <details> defeating a native-collapse attempt during the redesign).
@@ -17,7 +17,7 @@ export const metadata = {
  * Dark values keep each token's hue/chroma close to its light counterpart
  * and invert the lightness axis. Borders get MORE separation from their
  * background in dark mode than light (a real oklch dark-mode readability
- * point, not an oversight — dark-on-dark contrast reads flatter to the eye
+ * point, not an oversight - dark-on-dark contrast reads flatter to the eye
  * than the equivalent light-mode delta). cardBg sits slightly lighter than
  * bg so cards stay visually distinct the way white-on-oklch(0.97) does
  * today, not because it's "the same as bg".
@@ -67,12 +67,13 @@ const globalStyles = `
   }
   .lantern-hamburger { display: none; }
   /* Column counts live here, not inline, specifically so the mobile
-     override below can actually take effect — an inline gridTemplateColumns
+     override below can actually take effect - an inline gridTemplateColumns
      would always beat a stylesheet rule regardless of media query. */
-  .lantern-grid-3 { grid-template-columns: repeat(3, 1fr); }
-  .lantern-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .lantern-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+  .lantern-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .lantern-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
   @media (max-width: 768px) {
-    .lantern-grid-3, .lantern-grid-2 {
+    .lantern-grid-4, .lantern-grid-3, .lantern-grid-2 {
       grid-template-columns: 1fr;
     }
     .lantern-hamburger {
@@ -93,7 +94,7 @@ const globalStyles = `
       cursor: pointer;
     }
     /* left is set via inline style (MobileNav.tsx), driven directly by React
-       state, not by toggling this class — sidesteps a transform/compositing
+       state, not by toggling this class - sidesteps a transform/compositing
        issue where translateX-based sliding wasn't reliably taking effect.
        left-based animation costs a layout pass instead of being purely
        compositor-driven, but for a single occasional drawer open/close
@@ -116,11 +117,11 @@ const globalStyles = `
 `;
 
 /**
- * Sets data-theme on <html> synchronously, before first paint — the
+ * Sets data-theme on <html> synchronously, before first paint - the
  * standard flash-of-wrong-theme fix. Must run as a plain blocking script,
  * not next/script (any deferred strategy runs after paint, too late). This
  * is the dashboard OPERATOR's own UI preference for a private,
- * single-operator tool — unrelated to and not in tension with the
+ * single-operator tool - unrelated to and not in tension with the
  * tracker's (packages/tracker) no-cookies/no-visitor-identity stance,
  * which governs the tracking script running on end-user-visited sites, a
  * completely different application with a completely different audience.
@@ -135,7 +136,7 @@ const themeInitScript = `
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   // suppressHydrationWarning is scoped to this element's own attributes only
-  // (not descendants) — needed because themeInitScript below sets data-theme
+  // (not descendants) - needed because themeInitScript below sets data-theme
   // on this exact tag before React hydrates, which would otherwise be
   // (correctly, but harmlessly) flagged as a server/client mismatch every
   // time dark mode is active.

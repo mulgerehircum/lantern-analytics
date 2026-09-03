@@ -27,7 +27,7 @@ export function formatCustomEventLabel(name: string, metadata?: Record<string, s
  * lib/session-correlation.ts's session→events direction) with the
  * client-extracted rrweb click list (generic labels, full click coverage)
  * into one chronological timeline. A rrweb click within `windowMs` of a
- * custom event is treated as the same real-world click and dropped — the
+ * custom event is treated as the same real-world click and dropped - the
  * custom event's richer label wins. Both are kept when farther apart than
  * that. Pure; sorted ascending by offsetMs.
  */

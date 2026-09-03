@@ -89,7 +89,7 @@ export default async function FunnelsPage({
       title={
         <>
           {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
         </>
       }
     >
@@ -116,7 +116,7 @@ export default async function FunnelsPage({
               <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <span style={{ fontSize: "0.78rem", color: theme.color.textMuted, width: 48, flexShrink: 0 }}>Step {i}</span>
                 <select name={`step${i}Type`} defaultValue={step.type} style={{ ...fieldStyle, width: 90 }}>
-                  <option value="">— none —</option>
+                  <option value="">- none -</option>
                   <option value="path">Path</option>
                   <option value="event">Event</option>
                 </select>

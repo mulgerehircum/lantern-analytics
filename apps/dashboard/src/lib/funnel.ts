@@ -27,7 +27,7 @@ function percent(part: number, whole: number): number {
 /**
  * Per-visitor, in-order step matching over raw events (bounded by the
  * ~30-day raw-event TTL, same as every other raw-event-driven view in this
- * app — see lib/filter.ts's doc comment). Step matching reuses matchesFilter
+ * app - see lib/filter.ts's doc comment). Step matching reuses matchesFilter
  * rather than a bespoke predicate, since a funnel step is just a
  * single-dimension filter.
  *

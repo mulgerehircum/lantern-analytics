@@ -4,18 +4,18 @@
  * isolated project (its own `npm install`, no monorepo root context), which
  * can't resolve a workspace-only sibling package without deeper Vercel
  * monorepo build configuration. A small, stable, already-tested pure
- * function was judged not worth that extra deployment complexity — kept in
+ * function was judged not worth that extra deployment complexity - kept in
  * sync manually if the source ever changes.
  */
 
 export interface RawEventItem {
   path: string;
-  /** Pageview only — absent on custom events. */
+  /** Pageview only - absent on custom events. */
   referrer?: string;
   country: string;
   device: string;
   visitorHash: string;
-  /** Pageview only — see packages/tracker/src/visit.ts. Absent on rollups
+  /** Pageview only - see packages/tracker/src/visit.ts. Absent on rollups
    * written before this field existed; treated as `false`. */
   isNewVisit?: boolean;
   /** Present iff this is a custom event (e.g. "contact_click"). */
@@ -47,7 +47,7 @@ function increment(map: Record<string, number>, key: string): void {
 
 // Uniques are a count of pageviews flagged isNewVisit (see
 // packages/tracker/src/visit.ts and packages/ingestion/src/aggregate.ts's
-// doc comment) — not distinct visitorHash. Summing this count across any
+// doc comment) - not distinct visitorHash. Summing this count across any
 // range of rollups is exact, unlike the old Set-per-hour value.
 export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
   const topPages: Record<string, number> = {};

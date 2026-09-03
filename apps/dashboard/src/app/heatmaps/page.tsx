@@ -30,7 +30,7 @@ export default async function HeatmapsPage({
   const liveRollup = { SK: currentHourSK(), ...aggregateEvents(liveEvents) };
   const summary = summarizeRollups([...rollups, liveRollup]);
 
-  // The selected path gets interpolated into an iframe src below — never
+  // The selected path gets interpolated into an iframe src below - never
   // trust the raw query param for that. Validate against paths we actually
   // know about (from the site's own rollup data) before using it.
   const knownPaths = summary.topPages.map((p) => p.path);
@@ -48,7 +48,7 @@ export default async function HeatmapsPage({
       title={
         <>
           {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
         </>
       }
     >
@@ -80,7 +80,7 @@ export default async function HeatmapsPage({
       </form>
 
       {!site?.url ? (
-        <p style={{ color: theme.color.textFaint, fontSize: "0.82rem" }}>No live site URL registered for this site — can&apos;t render a preview.</p>
+        <p style={{ color: theme.color.textFaint, fontSize: "0.82rem" }}>No live site URL registered for this site - can&apos;t render a preview.</p>
       ) : points.length === 0 ? (
         <div style={card}>
           <p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>

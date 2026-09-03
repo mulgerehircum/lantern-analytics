@@ -16,6 +16,7 @@ import { AppShell } from "@/components/AppShell";
 import { AiQueryBox } from "@/components/AiQueryBox";
 import { ChartCard } from "@/components/ChartCard";
 import type { Chart } from "@/components/ChartCard";
+import { MetricRow } from "@/components/StatCards";
 import { DataTableCard } from "@/components/DataTableCard";
 import type { DataTableRow } from "@/components/DataTableCard";
 import {
@@ -28,7 +29,7 @@ import {
 import { isDayPeriod, currentMonth, currentDay, isHourPeriod, currentHour, shiftMonth, shiftDay, shiftHour } from "@/lib/months";
 
 /**
- * Server Component — fetches DynamoDB directly, server-side. No client-side
+ * Server Component - fetches DynamoDB directly, server-side. No client-side
  * fetch to a self-hosted API route: since this already runs on the server,
  * adding an HTTP round trip to our own API would be pure overhead. AWS
  * credentials never leave the server either way.
@@ -37,7 +38,7 @@ import { isDayPeriod, currentMonth, currentDay, isHourPeriod, currentHour, shift
  * complete hours) plus a live-computed pseudo-rollup for the current,
  * still-incomplete hour (raw events, aggregated on the fly). See
  * docs/design.md and the "how does Simple Analytics show data instantly"
- * discussion this was built to answer — the live path exists specifically
+ * discussion this was built to answer - the live path exists specifically
  * to close that gap without giving up the free-tier-friendly rollup design
  * for historical data.
  */
@@ -64,13 +65,13 @@ export default async function DashboardPage({
   const site = getSite(requestedSiteId);
   const siteId = site ? site.siteId : requestedSiteId;
   const filters = parseFilters(params);
-  // Month scoping and dimension filtering are two independent axes today —
+  // Month scoping and dimension filtering are two independent axes today -
   // if a dimension filter is active it takes over entirely (its own
   // raw-event-based ~30-day window, see below), same as before this feature
   // existed. Not composed together in this pass.
   //
   // `?month=` holds a month ("2026-08"), a day ("2026-08-15"), or an hour
-  // ("2026-08-15T14") — each is always inside exactly one of the coarser
+  // ("2026-08-15T14") - each is always inside exactly one of the coarser
   // ones, so it reuses the same param rather than needing a third one;
   // `isDayPeriod`/`isHourPeriod` tell them apart.
   const selectedPeriod = params.month?.trim() || undefined;
@@ -85,12 +86,12 @@ export default async function DashboardPage({
   //
   // Period-over-period comparison: only meaningful when a period is
   // actually selected (no single "previous period" exists for the
-  // unbounded "all time" root — inventing one, e.g. trailing-30-vs-
+  // unbounded "all time" root - inventing one, e.g. trailing-30-vs-
   // previous-30, would silently redefine what "all time" pageviews means
   // elsewhere in the app) and only when not dimension-filtered (filtering
   // bypasses selectedPeriod's scoping entirely, see lib/filter.ts, so
   // there's no coherent "previous period" for it either). Fetched
-  // unconditionally alongside the rest — `getHourlyRollups` on an
+  // unconditionally alongside the rest - `getHourlyRollups` on an
   // out-of-range/empty period just returns [], which computePeriodComparison
   // already treats as "no previous data" (renders as "new", not a bogus 0%).
   const previousPeriod = !selectedPeriod
@@ -109,7 +110,7 @@ export default async function DashboardPage({
   const sessionsSummary = summarizeSessions(sessions);
   const liveRollup = { SK: currentHourSK(), ...aggregateEvents(liveEvents) };
   // The live current-hour data only belongs in the summary when the viewed
-  // range actually includes "now" — the all-time view always does, a past
+  // range actually includes "now" - the all-time view always does, a past
   // period never does, the current month/day/hour does.
   const includesNow =
     !selectedPeriod ||
@@ -117,7 +118,7 @@ export default async function DashboardPage({
   const rollupsWithLive = includesNow ? [...rollups, liveRollup] : rollups;
 
   // When a dimension filter is active, the AGG# rollups can't answer it (they
-  // store per-hour counts within each dimension, not cross-dimension slices) —
+  // store per-hour counts within each dimension, not cross-dimension slices) -
   // recompute from raw events instead. See lib/filter.ts for why this covers
   // only the trailing ~30 days.
   let summary: DashboardSummary;
@@ -129,14 +130,14 @@ export default async function DashboardPage({
   } else {
     summary = summarizeRollups(rollupsWithLive);
     if (!selectedPeriod) {
-      // All-time view: trend across months — a single period already IS one
+      // All-time view: trend across months - a single period already IS one
       // month/day, nothing above it to trend.
       monthlyTrend = summarizeMonthlyTrend(rollupsWithLive);
     } else if (!isDay && !isHour) {
       // Viewing one month: break it down into its days, each a link deeper.
       dailyTrend = summarizeDailyTrend(rollupsWithLive);
     }
-    // Viewing one day or one hour: no trend below it either — the day case
+    // Viewing one day or one hour: no trend below it either - the day case
     // already has TimeSeriesChart as its own hourly breakdown, and an hour
     // is the finest granularity there is.
   }
@@ -144,11 +145,12 @@ export default async function DashboardPage({
 
   const comparison: PeriodComparison | undefined =
     selectedPeriod && !filtered ? computePeriodComparison(summary, summarizeRollups(previousRollups)) : undefined;
+  const previousSummary = selectedPeriod && !filtered ? summarizeRollups(previousRollups) : null;
 
   // Exactly one chart per drill depth (root→monthly, month→daily,
   // day→hourly; hour is the finest granularity, no chart below it). When a
   // dimension filter is active, selectedPeriod's scoping is bypassed
-  // entirely (see lib/filter.ts) — show the hourly breakdown of the filtered
+  // entirely (see lib/filter.ts) - show the hourly breakdown of the filtered
   // raw events instead, with no breadcrumb/period-nav (it'd be stale).
   const chart: Chart = filtered
     ? isHour
@@ -169,20 +171,20 @@ export default async function DashboardPage({
   // AI insights are optional and best-effort: skip the call entirely for an
   // empty view (nothing to say), and swallow any failure (GEMINI_API_KEY
   // unset, Gemini quota/network error) so a broken AI layer never breaks the
-  // rest of the dashboard — see docs/decisions.md.
+  // rest of the dashboard - see docs/decisions.md.
   //
   // Cached (stale-while-revalidate on Vercel) rather than called fresh on
   // every render: this box fires unconditionally on every page load, which
   // burns through Gemini's free-tier 5-requests/minute cap in a couple of
   // reloads. Keyed on siteId + period + filter state, NOT on summary's or
-  // sessionsSummary's content — unstable_cache's key comes from keyParts
+  // sessionsSummary's content - unstable_cache's key comes from keyParts
   // plus the wrapped function's own arguments (none here; both summaries
   // are closed over), so minor data drift within the revalidate window
   // intentionally does not bust the cache. 1 hour matches the rollup
   // Lambda's own EventBridge cadence (see
-  // packages/ingestion/infra/lib/lantern-stack.ts) — insights can't be
+  // packages/ingestion/infra/lib/lantern-stack.ts) - insights can't be
   // meaningfully fresher than the data they're summarizing anyway.
-  // sessionsSummary is passed alongside summary — it's all-time (see
+  // sessionsSummary is passed alongside summary - it's all-time (see
   // summarizeSessions's comment), not scoped to selectedPeriod/filters like
   // summary is, but it's still real signal worth folding in regardless of
   // which period is being viewed.
@@ -247,19 +249,28 @@ export default async function DashboardPage({
       title={
         <>
           {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> — not in site registry</span>}
+          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
         </>
       }
       filterChip={filtered ? buildFilterChip(siteId, filters) : undefined}
     >
       {filtered && (
         <p style={{ color: theme.color.amber, fontSize: "0.85rem", margin: "0 0 1rem" }}>
-          Filtered view — recomputed from raw events, so it covers the trailing ~30 days (the raw-event TTL)
+          Filtered view - recomputed from raw events, so it covers the trailing ~30 days (the raw-event TTL)
           rather than full history.
         </p>
       )}
 
       <PathFilterForm siteId={siteId} filters={filters} />
+
+      <MetricRow
+        pageviews={summary.totalPageviews}
+        uniques={summary.totalUniques}
+        pageviewsDelta={comparison?.pageviewsDeltaPercent}
+        uniquesDelta={comparison?.uniquesDeltaPercent}
+        previousPageviews={previousSummary?.totalPageviews}
+        sessionsSummary={sessionsSummary}
+      />
 
       <ChartCard
         siteId={siteId}
@@ -274,28 +285,29 @@ export default async function DashboardPage({
         chart={chart}
       />
 
-      {insights && <InsightsBox insights={insights} />}
+      <div className="lantern-grid-2" style={{ marginBottom: "1.25rem" }}>
+        {insights ? <InsightsBox insights={insights} /> : <div style={{ ...card }}><p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>No insights yet - not enough data.</p></div>}
+        {filtered ? (
+          <div style={{ ...card }}>
+            <p style={{ color: theme.color.textMuted, fontSize: "0.8rem", margin: 0 }}>Clear the active filter to ask a question about this exact view.</p>
+          </div>
+        ) : (
+          <AiQueryBox siteId={siteId} monthPrefix={selectedPeriod} />
+        )}
+      </div>
 
-      {filtered ? (
-        <p style={{ color: theme.color.textMuted, fontSize: "0.8rem", margin: "0 0 1.5rem" }}>
-          Clear the active filter to ask a question about this exact view.
-        </p>
-      ) : (
-        <AiQueryBox siteId={siteId} monthPrefix={selectedPeriod} />
-      )}
-
-      <div className="lantern-grid-3" style={{ display: "grid", gap: "1.25rem" }}>
+      <div className="lantern-grid-3">
         <DataTableCard title="Top pages" rows={topPageRows} initialVisibleCount={10} exportFilename={`${siteId}-top-pages.csv`} />
         <DataTableCard title="Referrers" rows={referrerRows} initialVisibleCount={10} exportFilename={`${siteId}-referrers.csv`} />
         <DataTableCard title="Countries" rows={countryRows} initialVisibleCount={10} exportFilename={`${siteId}-countries.csv`} />
       </div>
 
-      <div className="lantern-grid-2" style={{ display: "grid", gap: "1.25rem", marginTop: "1.25rem" }}>
+      <div className="lantern-grid-2" style={{ marginTop: "1rem" }}>
         <DataTableCard title="Devices" rows={deviceRows} initialVisibleCount={10} exportFilename={`${siteId}-devices.csv`} />
         <DataTableCard title="Custom events" rows={customEventRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-events.csv`} />
       </div>
 
-      <div style={{ marginTop: "1.25rem" }}>
+      <div style={{ marginTop: "1rem" }}>
         <DataTableCard title="Custom event details" rows={customEventDetailRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-event-details.csv`} />
       </div>
     </AppShell>
@@ -303,7 +315,7 @@ export default async function DashboardPage({
 }
 
 /**
- * Standalone "Path contains…" substring search — the one FilterBar
+ * Standalone "Path contains…" substring search - the one FilterBar
  * capability row-click filtering can't cover (row clicks only match an
  * exact existing value). Kept separate from the sidebar's decorative filter
  * fields, which stay non-functional per the design spec.
@@ -332,7 +344,7 @@ function PathFilterForm({ siteId, filters }: { siteId: string; filters: Dashboar
 }
 
 /**
- * Server-rendered, no client JS — see docs/design.md's Phase 3 section.
+ * Server-rendered, no client JS - see docs/design.md's Phase 3 section.
  * `insights` is already-generated observation+action pairs from
  * getInsights(); this component only lays them out.
  */
@@ -352,13 +364,13 @@ function InsightsBox({ insights }: { insights: Insight[] }) {
             borderRadius: theme.radius.small,
           }}
         >
-          AI
+          AI Automated
         </div>
       </div>
       {insights.map((insight, i) => (
         <div key={i} style={{ marginBottom: "0.7rem" }}>
           <div style={{ fontSize: "0.86rem" }}>{insight.observation}</div>
-          <div style={{ fontSize: "0.8rem", color: theme.color.brandTintTextStrong, marginTop: "0.15rem" }}>→ {insight.action}</div>
+          <div style={{ fontSize: "0.8rem", color: theme.color.brandTintTextStrong, marginTop: "0.15rem" }}>-&gt; {insight.action}</div>
         </div>
       ))}
     </div>

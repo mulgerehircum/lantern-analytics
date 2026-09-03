@@ -3,7 +3,7 @@ import { theme } from "@/lib/theme";
 import { formatDayLabel, formatMonthLabel, shiftDay, shiftMonth } from "@/lib/months";
 
 /**
- * Secondary prev/next affordance next to Breadcrumb in the chart card —
+ * Secondary prev/next affordance next to Breadcrumb in the chart card -
  * Breadcrumb now owns "go up a level" (it replaced these components' old
  * "(all time)"/"(up to X)" trailing link), so these only shift sideways
  * within the current depth.

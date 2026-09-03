@@ -16,14 +16,14 @@ export interface DataTableRow {
 
 /**
  * One data-table card (Top pages / Referrers / Countries / Devices / Custom
- * events / Custom event details). Presentational only — filter-agnostic; the
+ * events / Custom event details). Presentational only - filter-agnostic; the
  * caller (page.tsx) decides each row's href via lib/filter-ui.ts.
  *
  * `initialVisibleCount`, when set and rows exceed it, shows only that many
  * rows behind a "Show N more" toggle, with a search box that bypasses the
  * cap entirely once you start typing (see SearchableRows).
  * `exportFilename`, when set, adds a CSV-export button built from `key`/
- * `count` only (renderKey's JSX, e.g. Countries' flag icon, has no CSV use —
+ * `count` only (renderKey's JSX, e.g. Countries' flag icon, has no CSV use -
  * the raw key string is the correct cell value regardless).
  */
 export function DataTableCard({
@@ -38,6 +38,7 @@ export function DataTableCard({
   exportFilename?: string;
 }) {
   const searchable = initialVisibleCount !== undefined && rows.length > initialVisibleCount;
+  const maxCount = rows.length ? Math.max(...rows.map((r) => r.count), 0) : 0;
 
   return (
     <div style={card}>
@@ -49,35 +50,62 @@ export function DataTableCard({
         <p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>No data yet</p>
       ) : searchable ? (
         <SearchableRows
-          rows={rows.map((row) => ({ key: row.key, node: <Row key={row.key} row={row} /> }))}
+          rows={rows.map((row) => ({ key: row.key, node: <Row key={row.key} row={row} maxCount={maxCount} /> }))}
           initialVisibleCount={initialVisibleCount!}
         />
       ) : (
-        rows.map((row) => <Row key={row.key} row={row} />)
+        rows.map((row) => <Row key={row.key} row={row} maxCount={maxCount} />)
       )}
     </div>
   );
 }
 
-export function Row({ row }: { row: DataTableRow }) {
+export function Row({ row, maxCount }: { row: DataTableRow; maxCount?: number }) {
+  const pct = maxCount && maxCount > 0 ? (row.count / maxCount) * 100 : 0;
   const rowStyle: React.CSSProperties = {
     display: "flex",
     justifyContent: "space-between",
+    alignItems: "center",
     padding: "0.35rem 0.5rem",
     margin: "0 -0.5rem",
     fontSize: "0.82rem",
-    borderBottom: `1px solid ${theme.color.cardBorder}`,
     borderRadius: theme.radius.small,
     background: row.active ? theme.color.brandTintBg : "transparent",
     textDecoration: "none",
     color: "inherit",
+    position: "relative",
+    overflow: "hidden",
   };
+  // Visual gauge - subtle brand fill behind row per spec
+  const gaugeStyle: React.CSSProperties = maxCount
+    ? {
+        position: "absolute",
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: `${pct}%`,
+        background: theme.color.brand,
+        opacity: 0.08,
+        pointerEvents: "none",
+      }
+    : {};
   const content = (
     <>
-      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: "0.6rem" }}>
+      {maxCount ? <span style={gaugeStyle} aria-hidden /> : null}
+      <span
+        style={{
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          marginRight: "0.6rem",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
         {row.renderKey ? row.renderKey(row.key) : row.key || "(empty)"}
       </span>
-      <span style={{ fontWeight: theme.font.weight.semibold, flexShrink: 0 }}>{row.count}</span>
+      <span style={{ fontWeight: theme.font.weight.semibold, flexShrink: 0, position: "relative", zIndex: 1 }}>{row.count}</span>
     </>
   );
 

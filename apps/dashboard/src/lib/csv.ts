@@ -1,4 +1,4 @@
-/** Minimal RFC 4180 field escaping — quote a field containing a comma, quote, or newline, doubling embedded quotes. */
+/** Minimal RFC 4180 field escaping - quote a field containing a comma, quote, or newline, doubling embedded quotes. */
 function escapeCsvField(value: string): string {
   if (/[",\r\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;

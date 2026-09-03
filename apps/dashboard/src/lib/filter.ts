@@ -8,36 +8,36 @@ import type { HourlyRollupItem, RawEventRecord } from "./dynamodb";
  * counts *within* each dimension (topPages, referrers, ...) but no
  * cross-dimension counts, so e.g. "pageviews to /pricing" can't be derived
  * from them. The filtered view therefore recomputes hourly rollups from raw
- * events — which means it only covers the trailing ~30 days, the raw-event
+ * events - which means it only covers the trailing ~30 days, the raw-event
  * TTL window. Documented here because that coverage limit is a real behavior,
  * not an accident.
  *
  * Custom-event filters (eventName / eventKey / eventValue) follow the same
  * rule. An eventName filter only ever matches custom events (pageviews carry
  * no `name`), so the resulting rollups have pageviews of 0 and the "Pageviews"
- * stat / time-series chart read 0 — a documented consequence, not a bug.
+ * stat / time-series chart read 0 - a documented consequence, not a bug.
  */
 
 export interface DashboardFilters {
   /** Substring match on path (case-sensitive). */
   path?: string;
-  /** Exact match. Pageviews without a referrer are "direct" — see aggregate.ts. */
+  /** Exact match. Pageviews without a referrer are "direct" - see aggregate.ts. */
   referrer?: string;
   /** Exact match, uppercase ISO code as stored (e.g. "MD"). */
   country?: string;
   /** Exact match ("desktop" | "mobile" | "tablet"). */
   device?: string;
   /** Exact match on a custom event name, e.g. "contact_click". Pageviews have
-   * no `name`, so they never match — an event-name filter is a custom-events
+   * no `name`, so they never match - an event-name filter is a custom-events
    * view by construction. */
   eventName?: string;
   /** Exact match on event.metadata[key] === value. Only applied when BOTH
-   * eventKey and eventValue are set — a bare key would be ambiguous. */
+   * eventKey and eventValue are set - a bare key would be ambiguous. */
   eventKey?: string;
   eventValue?: string;
 }
 
-/** Raw event plus its DynamoDB key — the hour is embedded in the SK timestamp. */
+/** Raw event plus its DynamoDB key - the hour is embedded in the SK timestamp. */
 export interface FilterableEvent extends RawEventRecord {
   SK: string; // "EVENT#2026-08-08T14:32:10Z#f8e2c1"
 }

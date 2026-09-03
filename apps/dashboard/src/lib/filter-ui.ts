@@ -1,7 +1,7 @@
 import type { DashboardFilters } from "./filter";
 
 /**
- * UI-only helpers for the click-to-filter data-table rows — kept separate
+ * UI-only helpers for the click-to-filter data-table rows - kept separate
  * from lib/filter.ts (which stays untouched: parsing/matching/rollup logic
  * only) so this file can own href-construction and active-row comparison
  * without growing that one's surface area.
@@ -19,7 +19,7 @@ export const ROW_FILTER_LABELS: Record<RowFilterDimension, string> = {
 
 /**
  * Builds an href that filters on exactly one dimension. Deliberately drops
- * every other query param (month, other filters) — clicking a table row
+ * every other query param (month, other filters) - clicking a table row
  * always REPLACES the active filter rather than composing with it, matching
  * the design's "only one filter active at a time" rule.
  */

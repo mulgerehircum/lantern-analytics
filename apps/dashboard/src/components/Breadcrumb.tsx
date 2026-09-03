@@ -3,7 +3,7 @@ import { theme } from "@/lib/theme";
 import { formatDayLabel, formatMonthLabel, parentDay, parentMonth } from "@/lib/months";
 
 /**
- * "All time › August 2026 › Aug 15" trail above the Overview chart — each
+ * "All time › August 2026 › Aug 15" trail above the Overview chart - each
  * segment before the current one links up to that depth (same targets
  * MonthNav/DayNav/HourNav's old "(all time)"/"(up to X)" links already used),
  * clicking a chart bar still drills one level deeper (unchanged, handled by
@@ -39,7 +39,7 @@ export function Breadcrumb({
     }
   }
 
-  // The current depth is always the last segment — never a link, even though
+  // The current depth is always the last segment - never a link, even though
   // an href was computed above (its own destination is the current page).
   const last = segments.length - 1;
 
@@ -52,7 +52,7 @@ export function Breadcrumb({
           </span>
         ) : (
           <span key={seg.label} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            {/* seg.href is always defined here — only the last segment (handled above) ever omits it */}
+            {/* seg.href is always defined here - only the last segment (handled above) ever omits it */}
             <Link href={seg.href!} style={{ color: theme.color.textMuted, textDecoration: "none" }}>
               {seg.label}
             </Link>

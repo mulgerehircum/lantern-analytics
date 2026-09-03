@@ -4,7 +4,7 @@ import type { SessionRecordingItem } from "./sessions";
 /**
  * Matches raw custom events to session recordings by visitorHash + time
  * window, in both directions. Generalizes the join `attachVariantToSessions`
- * (lib/experiment.ts) already does for one specific event type — rollups
+ * (lib/experiment.ts) already does for one specific event type - rollups
  * can't answer this (they only ever store counts, never individual
  * timestamps/visitorHash, see packages/ingestion/src/aggregate.ts), so this
  * always works from `getAllRawEvents`'s raw EVENT# items, same ~30-day TTL
@@ -21,7 +21,7 @@ export function parseEventTimestamp(sk: string): number | null {
 
 // A real interaction should land inside the session's own window, but clock
 // skew between client send and server receive plus queued/batched delivery
-// can push it slightly outside — tolerate a few minutes on either edge
+// can push it slightly outside - tolerate a few minutes on either edge
 // rather than requiring an exact bound. Same rationale/value as the
 // card_variant_view-specific tolerance this generalizes.
 export const DEFAULT_MATCH_TOLERANCE_MS = 5 * 60 * 1000;
@@ -35,10 +35,10 @@ function getSessionWindow(
 }
 
 /**
- * All custom-event occurrences (events with a `name` — plain pageviews are
+ * All custom-event occurrences (events with a `name` - plain pageviews are
  * excluded) whose visitorHash + timestamp fall within `session`'s window
  * (± tolerance), each annotated with its millisecond offset into the
- * session — clamped into [0, durationMs] so a slightly-outside-tolerance
+ * session - clamped into [0, durationMs] so a slightly-outside-tolerance
  * match still lands at a sane position rather than a negative/overflowing
  * one. Sorted ascending by offset, ready to feed a timeline directly.
  */
@@ -69,11 +69,11 @@ export interface SessionEventMatch {
 
 /**
  * The session `event` happened in, if any. `sessions` should be newest-first
- * (as `getSessionRecordings` already returns) — the first matching session
+ * (as `getSessionRecordings` already returns) - the first matching session
  * wins, so an overlapping-window tie (rare: two recordings for one visitor
  * whose windows both cover the same instant) resolves to the more recent
  * one. `null` is the common, expected case (the event predates any
- * recording, or the recording has already expired past its own retention) —
+ * recording, or the recording has already expired past its own retention) -
  * callers must degrade gracefully, not treat it as an error.
  */
 export function findSessionForEvent(
