@@ -1,5 +1,4 @@
 import { unstable_cache } from "next/cache";
-import Link from "next/link";
 import { aggregateEvents } from "@/lib/aggregate";
 import { getHourlyRollups, getLiveRawEvents, getAllRawEvents, currentHourSK } from "@/lib/dynamodb";
 import { getSessionRecordings } from "@/lib/sessions";
@@ -8,15 +7,15 @@ import type { Insight } from "@/lib/ai-query";
 import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend, summarizeSessions, computePeriodComparison } from "@/lib/summarize";
 import type { DashboardSummary, MonthlyTrendPoint, DailyTrendPoint, PeriodComparison } from "@/lib/summarize";
 import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filter";
-import type { DashboardFilters } from "@/lib/filter";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { theme, card } from "@/lib/theme";
-import { fieldStyle } from "@/components/ProjectSelector";
 import { AppShell } from "@/components/AppShell";
 import { AiQueryBox } from "@/components/AiQueryBox";
 import { ChartCard } from "@/components/ChartCard";
 import type { Chart } from "@/components/ChartCard";
+import { HeaderBar } from "@/components/HeaderBar";
 import { MetricRow } from "@/components/StatCards";
+import { buildOverviewCsv, formatHeaderRangeLabel } from "@/lib/header";
 import { DataTableCard } from "@/components/DataTableCard";
 import type { DataTableRow } from "@/components/DataTableCard";
 import {
@@ -254,14 +253,32 @@ export default async function DashboardPage({
       }
       filterChip={filtered ? buildFilterChip(siteId, filters) : undefined}
     >
+      <HeaderBar
+        siteId={siteId}
+        siteName={site ? site.name : siteId}
+        siteUrl={site?.url}
+        liveVisitors={!filtered ? liveRollup.uniques : 0}
+        selectedPeriod={selectedPeriod}
+        isDay={isDay}
+        isHour={isHour}
+        searchDefault={filters.path}
+        overviewCsv={buildOverviewCsv({
+          periodLabel: formatHeaderRangeLabel(selectedPeriod, isDay, isHour),
+          pageviews: summary.totalPageviews,
+          uniques: summary.totalUniques,
+          topPages: summary.topPages.map((p) => ({ path: p.path, count: p.count })),
+          referrers: summary.referrers.map((r) => ({ referrer: r.referrer, count: r.count })),
+          countries: summary.countries.map((c) => ({ country: c.country, count: c.count })),
+        })}
+        csvFilename={`${siteId}-overview-${selectedPeriod ?? "all-time"}.csv`}
+      />
+
       {filtered && (
         <p style={{ color: theme.color.amber, fontSize: "0.85rem", margin: "0 0 1rem" }}>
           Filtered view - recomputed from raw events, so it covers the trailing ~30 days (the raw-event TTL)
           rather than full history.
         </p>
       )}
-
-      <PathFilterForm siteId={siteId} filters={filters} />
 
       <MetricRow
         pageviews={summary.totalPageviews}
@@ -311,35 +328,6 @@ export default async function DashboardPage({
         <DataTableCard title="Custom event details" rows={customEventDetailRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-event-details.csv`} />
       </div>
     </AppShell>
-  );
-}
-
-/**
- * Standalone "Path contains…" substring search - the one FilterBar
- * capability row-click filtering can't cover (row clicks only match an
- * exact existing value). Kept separate from the sidebar's decorative filter
- * fields, which stay non-functional per the design spec.
- */
-function PathFilterForm({ siteId, filters }: { siteId: string; filters: DashboardFilters }) {
-  return (
-    <form method="GET" style={{ display: "flex", gap: "0.5rem", alignItems: "center", margin: "0 0 1.2rem" }}>
-      <input type="hidden" name="siteId" value={siteId} />
-      <input
-        type="text"
-        name="path"
-        defaultValue={filters.path}
-        placeholder="Path contains…"
-        style={{ ...fieldStyle, width: 220 }}
-      />
-      <button type="submit" style={{ ...fieldStyle, cursor: "pointer", background: theme.color.brand, color: theme.color.onBrand, border: "none" }}>
-        Filter
-      </button>
-      {filters.path && (
-        <Link href={`/?siteId=${encodeURIComponent(siteId)}`} style={{ fontSize: "0.8rem", color: theme.color.brand }}>
-          Clear
-        </Link>
-      )}
-    </form>
   );
 }
 

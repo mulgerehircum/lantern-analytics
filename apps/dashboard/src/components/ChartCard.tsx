@@ -84,6 +84,7 @@ export function ChartCard({
         )}
         {hasLive ? (
           <span
+            title="Current-hour events, not rolled up yet"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -97,7 +98,7 @@ export function ChartCard({
             }}
           >
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: theme.color.brand, display: "inline-block" }} />
-            {liveCount} visitors online
+            {liveCount} live
           </span>
         ) : null}
       </div>

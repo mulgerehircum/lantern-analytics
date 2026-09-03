@@ -76,6 +76,12 @@ const globalStyles = `
     .lantern-grid-4, .lantern-grid-3, .lantern-grid-2 {
       grid-template-columns: 1fr;
     }
+    /* Header bar: search + Live View collapse away so Export CSV and the
+       project title keep immediate visibility; the date pill and stepper
+       stay (they wrap onto their own row via the bar's flex-wrap). */
+    .lantern-header-collapsible {
+      display: none;
+    }
     .lantern-hamburger {
       display: flex;
       align-items: center;
