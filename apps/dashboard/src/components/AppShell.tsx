@@ -6,11 +6,14 @@ import type { View } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 
 /**
- * Shared page shell: Sidebar + content area with a title/filter-chip header.
- * Assembled per-page (not in layout.tsx) since only page.tsx components can
- * read searchParams in the App Router - each page still does its own data
- * fetching, this just replaces the old hand-rolled <main>/<h1> boilerplate
- * that used to be duplicated across all four pages.
+ * Shared page shell: Sidebar + content area with an optional title and
+ * filter-chip row. `title` is optional because the overview page renders
+ * HeaderBar instead (its breadcrumb already carries the project context,
+ * so a second heading just duplicates it) - every other page still passes
+ * one. Assembled per-page (not in layout.tsx) since only page.tsx
+ * components can read searchParams in the App Router - each page still does
+ * its own data fetching, this just replaces the old hand-rolled
+ * <main>/<h1> boilerplate that used to be duplicated across all four pages.
  */
 export function AppShell({
   siteId,
@@ -25,7 +28,8 @@ export function AppShell({
   siteUrl?: string;
   activeView: View;
   basePath: string;
-  title: ReactNode;
+  /** Omitted by the overview page - HeaderBar owns the heading there. */
+  title?: ReactNode;
   filterChip?: { label: string; value: string; clearHref: string };
   children: ReactNode;
 }) {
@@ -35,9 +39,10 @@ export function AppShell({
         <Sidebar siteId={siteId} siteUrl={siteUrl} activeView={activeView} basePath={basePath} />
       </MobileNav>
       <div style={{ flex: 1, padding: "2.5rem 2.5rem 4rem", minWidth: 0 }}>
-        <div style={{ marginBottom: "1.5rem" }}>
-          <h1 style={{ margin: 0, fontSize: "1.4rem", fontWeight: theme.font.weight.bold }}>{title}</h1>
-          {filterChip && (
+        {(title || filterChip) && (
+          <div style={{ marginBottom: "1.5rem" }}>
+            {title && <h1 style={{ margin: 0, fontSize: "1.4rem", fontWeight: theme.font.weight.bold }}>{title}</h1>}
+            {filterChip && (
             <Link
               href={filterChip.clearHref}
               style={{
@@ -56,8 +61,9 @@ export function AppShell({
             >
               Filtered by {filterChip.label}: {filterChip.value} ✕
             </Link>
-          )}
-        </div>
+            )}
+          </div>
+        )}
         {children}
       </div>
     </div>

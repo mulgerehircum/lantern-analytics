@@ -18,6 +18,7 @@ import { ExportCsvButton } from "./ExportCsvButton";
 export function HeaderBar({
   siteId,
   siteName,
+  unregistered,
   siteUrl,
   liveVisitors,
   selectedPeriod,
@@ -29,6 +30,8 @@ export function HeaderBar({
 }: {
   siteId: string;
   siteName: string;
+  /** Flags a siteId missing from the registry (data still renders). */
+  unregistered?: boolean;
   siteUrl?: string;
   /** Live unique visitors in the current hour (0 hides the pill). */
   liveVisitors: number;
@@ -62,6 +65,9 @@ export function HeaderBar({
       <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.875rem" }}>
           <span style={{ fontWeight: theme.font.weight.semibold, color: theme.color.text }}>{siteName}</span>
+          {unregistered && (
+            <span style={{ fontSize: "0.75rem", fontWeight: 400, color: theme.color.amber }}>- not in site registry</span>
+          )}
           <span style={{ color: theme.color.textFaint }}>/</span>
           <HeaderProjectSwitcher siteId={siteId} />
         </div>

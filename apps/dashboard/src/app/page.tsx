@@ -245,17 +245,12 @@ export default async function DashboardPage({
       siteUrl={site?.url}
       activeView="overview"
       basePath="/"
-      title={
-        <>
-          {site ? site.name : siteId}
-          {!site && <span style={{ fontSize: "0.85rem", fontWeight: 400, color: theme.color.amber }}> - not in site registry</span>}
-        </>
-      }
       filterChip={filtered ? buildFilterChip(siteId, filters) : undefined}
     >
       <HeaderBar
         siteId={siteId}
         siteName={site ? site.name : siteId}
+        unregistered={!site}
         siteUrl={site?.url}
         liveVisitors={!filtered ? liveRollup.uniques : 0}
         selectedPeriod={selectedPeriod}
