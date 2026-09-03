@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { theme } from "@/lib/theme";
-import { formatDayLabel, shiftDay, } from "@/lib/months";
+import { formatDayLabel, formatMonthLabel, shiftDay, shiftMonth } from "@/lib/months";
 
 /**
  * Secondary prev/next affordance next to Breadcrumb in the chart card —
@@ -8,6 +8,20 @@ import { formatDayLabel, shiftDay, } from "@/lib/months";
  * "(all time)"/"(up to X)" trailing link), so these only shift sideways
  * within the current depth.
  */
+export function MonthNav({ siteId, month }: { siteId: string; month: string }) {
+  const prev = shiftMonth(month, -1);
+  const next = shiftMonth(month, 1);
+  return (
+    <p style={navStyle}>
+      <Link href={`/?siteId=${encodeURIComponent(siteId)}&month=${prev}`} style={navLinkStyle}>
+        ← {formatMonthLabel(prev)}
+      </Link>
+      <Link href={`/?siteId=${encodeURIComponent(siteId)}&month=${next}`} style={navLinkStyle}>
+        {formatMonthLabel(next)} →
+      </Link>
+    </p>
+  );
+}
 
 export function DayNav({ siteId, day }: { siteId: string; day: string }) {
   const prev = shiftDay(day, -1);

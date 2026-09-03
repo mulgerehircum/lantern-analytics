@@ -73,7 +73,7 @@ export default async function DashboardPage({
   // ("2026-08-15T14") — each is always inside exactly one of the coarser
   // ones, so it reuses the same param rather than needing a third one;
   // `isDayPeriod`/`isHourPeriod` tell them apart.
-  const selectedPeriod = params.month?.trim() || currentMonth();
+  const selectedPeriod = params.month?.trim() || undefined;
   const isDay = selectedPeriod ? isDayPeriod(selectedPeriod) : false;
   const isHour = selectedPeriod ? isHourPeriod(selectedPeriod) : false;
 
