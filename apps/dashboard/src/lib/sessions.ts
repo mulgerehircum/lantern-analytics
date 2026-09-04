@@ -1,5 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { unstable_cache } from "next/cache";
 
 const TABLE_NAME = process.env.EVENTS_TABLE_NAME ?? "lantern-events";
 const REGION = process.env.LANTERN_AWS_REGION ?? "eu-central-1";
@@ -40,16 +41,31 @@ export interface SessionRecordingItem {
  * packages/ingestion/docs/dynamodb-schema.md for the SESSION# item shape.
  */
 export async function getSessionRecordings(siteId: string): Promise<SessionRecordingItem[]> {
-  const result = await client.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-      ExpressionAttributeValues: {
-        ":pk": `SITE#${siteId}`,
-        ":sk": "SESSION#",
-      },
-      ScanIndexForward: false,
-    }),
-  );
-  return (result.Items ?? []) as SessionRecordingItem[];
+  return getCachedSessionRecordings(siteId);
 }
+
+/**
+ * Cached (60s) - session metadata is a small bounded query but is read
+ * on nearly every page (list, detail lookup, event→session correlation,
+ * and the /api/recordings route's storageRef resolution), so repeat
+ * navigations share one cache entry per site instead of re-querying
+ * each time. Same staleness window as lib/dynamodb.ts's read caches.
+ */
+const getCachedSessionRecordings = unstable_cache(
+  async (siteId: string): Promise<SessionRecordingItem[]> => {
+    const result = await client.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: {
+          ":pk": `SITE#${siteId}`,
+          ":sk": "SESSION#",
+        },
+        ScanIndexForward: false,
+      }),
+    );
+    return (result.Items ?? []) as SessionRecordingItem[];
+  },
+  ["session-recordings"],
+  { revalidate: 60 },
+);

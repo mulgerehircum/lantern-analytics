@@ -1,6 +1,7 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { unstable_cache } from "next/cache";
 
 const TABLE_NAME = process.env.EVENTS_TABLE_NAME ?? "lantern-events";
 const REGION = process.env.LANTERN_AWS_REGION ?? "eu-central-1";
@@ -53,19 +54,45 @@ export interface HourlyRollupItem {
  * spells it with "#". Omit `monthPrefix` for the unbounded all-time query.
  */
 export async function getHourlyRollups(siteId: string, monthPrefix?: string): Promise<HourlyRollupItem[]> {
-  const skPrefix = monthPrefix ? `AGG#${monthPrefix.replace("T", "#")}` : "AGG#";
-  const result = await client.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-      ExpressionAttributeValues: {
-        ":pk": `SITE#${siteId}`,
-        ":sk": skPrefix,
-      },
-    }),
-  );
-  return (result.Items ?? []) as HourlyRollupItem[];
+  return getCachedHourlyRollups(siteId, monthPrefix);
 }
+
+/**
+ * Cached (60s) wrapper around the rollup query. The dashboard's aggregate
+ * views can tolerate a minute of staleness - the rollup Lambda only writes
+ * hourly anyway, and AI insights already cache for a full hour - but the
+ * cache turns repeat navigations into instant cache hits instead of a
+ * fresh DynamoDB round-trip each time. monthPrefix is part of the cache
+ * key (via keyParts + the wrapped call's own arguments) so different
+ * periods never share entries. The inner fetch paginates: rollups can
+ * exceed DynamoDB's 1MB-per-query page size on longer horizons, and the
+ * old single-shot query silently truncated at that limit.
+ */
+const getCachedHourlyRollups = unstable_cache(
+  async (siteId: string, monthPrefix?: string): Promise<HourlyRollupItem[]> => {
+    const skPrefix = monthPrefix ? `AGG#${monthPrefix.replace("T", "#")}` : "AGG#";
+    const items: HourlyRollupItem[] = [];
+    let lastKey: Record<string, AttributeValue> | undefined;
+    do {
+      const result = await client.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+          ExpressionAttributeValues: {
+            ":pk": `SITE#${siteId}`,
+            ":sk": skPrefix,
+          },
+          ExclusiveStartKey: lastKey,
+        }),
+      );
+      items.push(...((result.Items ?? []) as HourlyRollupItem[]));
+      lastKey = result.LastEvaluatedKey;
+    } while (lastKey);
+    return items;
+  },
+  ["hourly-rollups"],
+  { revalidate: 60 },
+);
 
 export interface RawEventRecord {
   path: string;
@@ -125,22 +152,40 @@ export interface RawEventRecordWithKey extends RawEventRecord {
  * dimension filtering for it is no longer possible.
  */
 export async function getAllRawEvents(siteId: string): Promise<RawEventRecordWithKey[]> {
-  const items: RawEventRecordWithKey[] = [];
-  let lastKey: Record<string, AttributeValue> | undefined;
-  do {
-    const result = await client.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-        ExpressionAttributeValues: {
-          ":pk": `SITE#${siteId}`,
-          ":sk": "EVENT#",
-        },
-        ExclusiveStartKey: lastKey,
-      }),
-    );
-    items.push(...((result.Items ?? []) as RawEventRecordWithKey[]));
-    lastKey = result.LastEvaluatedKey;
-  } while (lastKey);
-  return items;
+  return getCachedAllRawEvents(siteId);
 }
+
+/**
+ * Cached (60s) - this is the expensive read every filtered view shares
+ * (serial pagination over ~30 days of raw events, one 1MB page at a
+ * time). Caching it means navigating between /sessions, /events,
+ * /funnels, /heatmaps and /experiments hits one shared cache entry per
+ * site instead of re-running that sweep per page. Fresh results stay
+ * within a minute of live, same window as the rollup cache above; the
+ * genuinely-live current-hour read (getLiveRawEvents) is deliberately
+ * NOT cached so the "Live" pill stays real-time.
+ */
+const getCachedAllRawEvents = unstable_cache(
+  async (siteId: string): Promise<RawEventRecordWithKey[]> => {
+    const items: RawEventRecordWithKey[] = [];
+    let lastKey: Record<string, AttributeValue> | undefined;
+    do {
+      const result = await client.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+          ExpressionAttributeValues: {
+            ":pk": `SITE#${siteId}`,
+            ":sk": "EVENT#",
+          },
+          ExclusiveStartKey: lastKey,
+        }),
+      );
+      items.push(...((result.Items ?? []) as RawEventRecordWithKey[]));
+      lastKey = result.LastEvaluatedKey;
+    } while (lastKey);
+    return items;
+  },
+  ["all-raw-events"],
+  { revalidate: 60 },
+);
