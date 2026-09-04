@@ -30,6 +30,15 @@ export const theme = {
     amber: "var(--color-amber)",
     /** Error states (e.g. ReplayPlayer's "Failed to load the recording"). */
     danger: "var(--color-danger)",
+    /**
+     * Vibrant data-viz scale for threshold coloring (chart segments, table
+     * gauges). Deliberately hardcoded, not OKLCH tokens: these must stay
+     * saturated and distinguishable in both modes, while the semantic
+     * tokens above are muted by design.
+     */
+    thresholdLow: "#e5484d",
+    thresholdMid: "#f5a524",
+    thresholdHigh: "#30a46c",
     /** White-card background - a named token rather than a bare "#fff" so dark mode has somewhere to redefine it. */
     cardBg: "var(--color-card-bg)",
     /** Text/icon color for content sitting on a brand-colored background (buttons, the logo badge). */

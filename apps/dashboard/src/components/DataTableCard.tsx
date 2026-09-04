@@ -110,6 +110,16 @@ export function DataTableCard({
   );
 }
 
+/**
+ * Gauge fill by share of the card max: bottom third red, middle third
+ * yellow, top third green (vibrant data-viz scale).
+ */
+function gaugeColor(pct: number): string {
+  if (pct < 100 / 3) return theme.color.thresholdLow;
+  if (pct < 200 / 3) return theme.color.thresholdMid;
+  return theme.color.thresholdHigh;
+}
+
 export function Row({ row, maxCount }: { row: DataTableRow; maxCount?: number }) {
   const pct = maxCount && maxCount > 0 ? (row.count / maxCount) * 100 : 0;
   const rowStyle: React.CSSProperties = {
@@ -136,7 +146,7 @@ export function Row({ row, maxCount }: { row: DataTableRow; maxCount?: number })
         aria-hidden
         style={{ display: "block", height: 6, borderRadius: 999, background: theme.color.bg, border: `1px solid ${theme.color.border}`, overflow: "hidden" }}
       >
-        <span style={{ display: "block", height: "100%", width: `${pct}%`, borderRadius: 999, background: theme.color.brand }} />
+        <span style={{ display: "block", height: "100%", width: `${pct}%`, borderRadius: 999, background: gaugeColor(pct) }} />
       </span>
     </>
   );

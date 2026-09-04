@@ -66,7 +66,15 @@ export function DevicesCard({
                 aria-hidden
                 style={{ display: "block", height: 8, borderRadius: 999, background: theme.color.bg, border: `1px solid ${theme.color.border}`, overflow: "hidden" }}
               >
-                <span style={{ display: "block", height: "100%", width: `${pct}%`, borderRadius: 999, background: theme.color.brand }} />
+                <span
+                  style={{
+                    display: "block",
+                    height: "100%",
+                    width: `${pct}%`,
+                    borderRadius: 999,
+                    background: pct < 100 / 3 ? theme.color.thresholdLow : pct < 200 / 3 ? theme.color.thresholdMid : theme.color.thresholdHigh,
+                  }}
+                />
               </span>
             </div>
           );
@@ -140,7 +148,13 @@ export function CustomEventTiles({
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
                   <div style={{ fontFamily: theme.font.mono, fontSize: "1rem", fontWeight: theme.font.weight.bold }}>{event.count}</div>
-                  <div style={{ fontSize: "0.625rem", color: theme.color.brandTintTextStrong, fontWeight: theme.font.weight.semibold }}>
+                  <div
+                    style={{
+                      fontSize: "0.625rem",
+                      color: share < 100 / 3 ? theme.color.thresholdLow : share < 200 / 3 ? theme.color.thresholdMid : theme.color.thresholdHigh,
+                      fontWeight: theme.font.weight.semibold,
+                    }}
+                  >
                     {share.toFixed(1)}% share
                   </div>
                 </div>

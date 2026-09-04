@@ -18,23 +18,33 @@ export interface TrendPoint {
   href?: string;
 }
 
+/** One smoothed Catmull-Rom segment between two adjacent points. */
+function smoothSegment(p0: { x: number; y: number }, p1: { x: number; y: number }, p2: { x: number; y: number }, p3: { x: number; y: number }): string {
+  const c1x = p1.x + (p2.x - p0.x) / 6;
+  const c1y = p1.y + (p2.y - p0.y) / 6;
+  const c2x = p2.x - (p3.x - p1.x) / 6;
+  const c2y = p2.y - (p3.y - p1.y) / 6;
+  return `M${p1.x.toFixed(2)},${p1.y.toFixed(2)} C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+}
+
 /** Catmull-Rom smoothing - straight segments make sparsejagged polylines out of few points. */
 function smoothPath(pts: Array<{ x: number; y: number }>): string {
   if (pts.length === 0) return "";
   if (pts.length < 3) return pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
-  let d = `M${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(pts.length - 1, i + 2)];
-    const c1x = p1.x + (p2.x - p0.x) / 6;
-    const c1y = p1.y + (p2.y - p0.y) / 6;
-    const c2x = p2.x - (p3.x - p1.x) / 6;
-    const c2y = p2.y - (p3.y - p1.y) / 6;
-    d += ` C${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
-  }
-  return d;
+  return pts
+    .slice(0, -1)
+    .map((_, i) => smoothSegment(pts[Math.max(0, i - 1)], pts[i], pts[i + 1], pts[Math.min(pts.length - 1, i + 2)]))
+    .join(" ");
+}
+
+/**
+ * Line color by value relative to the visible max: bottom third red,
+ * middle third yellow, top third green (vibrant data-viz scale).
+ */
+function thresholdColor(ratio: number): string {
+  if (ratio < 1 / 3) return theme.color.thresholdLow;
+  if (ratio < 2 / 3) return theme.color.thresholdMid;
+  return theme.color.thresholdHigh;
 }
 
 /**
@@ -95,8 +105,22 @@ export function TrendAreaChart({
   const pvPts = points.map((p, i) => ({ x: x(i), y: y(p.pageviews) }));
   const uqPts = points.map((p, i) => ({ x: x(i), y: y(p.uniques) }));
   const pvLine = smoothPath(pvPts);
-  const uqLine = smoothPath(uqPts);
   const areaPath = `${pvLine} L${x(n - 1).toFixed(2)},100 L${x(0).toFixed(2)},100 Z`;
+
+  /** Per-segment strokes colored by the segment's mean value vs the visible max. */
+  function coloredSegments(pts: Array<{ x: number; y: number }>, values: number[]): Array<{ d: string; color: string }> {
+    if (pts.length < 2) return [];
+    if (pts.length < 3) {
+      const mean = values.reduce((a, b) => a + b, 0) / values.length / visibleMax;
+      return [{ d: smoothPath(pts), color: thresholdColor(mean) }];
+    }
+    return pts.slice(0, -1).map((_, i) => {
+      const d = smoothSegment(pts[Math.max(0, i - 1)], pts[i], pts[i + 1], pts[Math.min(pts.length - 1, i + 2)]);
+      return { d, color: thresholdColor((values[i] + values[i + 1]) / 2 / visibleMax) };
+    });
+  }
+  const pvSegments = showPageviews ? coloredSegments(pvPts, points.map((p) => p.pageviews)) : [];
+  const uqSegments = showUniques ? coloredSegments(uqPts, points.map((p) => p.uniques)) : [];
 
   const primaryOf = (p: TrendPoint) => (showPageviews ? p.pageviews : p.uniques);
   const peakIndex = points.reduce((best, p, i) => (primaryOf(p) > primaryOf(points[best]) ? i : best), 0);
@@ -121,14 +145,14 @@ export function TrendAreaChart({
         <div style={{ display: "flex", gap: "1rem", alignItems: "center", fontSize: "0.75rem" }}>
           <LegendToggle
             label={`Pageviews (${pageviewTotal})`}
-            swatch={{ background: theme.color.brand }}
+            swatch={{ background: `linear-gradient(90deg, ${theme.color.thresholdLow}, ${theme.color.thresholdMid}, ${theme.color.thresholdHigh})` }}
             textColor={theme.color.text}
             active={showPageviews}
             onToggle={() => setShowPageviews((v) => !v)}
           />
           <LegendToggle
             label={`Uniques (${uniquesTotal})`}
-            swatch={{ background: theme.color.brandTintBg, border: `1px solid ${theme.color.brand}` }}
+            swatch={{ background: `linear-gradient(90deg, ${theme.color.thresholdLow}, ${theme.color.thresholdMid}, ${theme.color.thresholdHigh})` }}
             textColor={theme.color.textMuted}
             active={showUniques}
             onToggle={() => setShowUniques((v) => !v)}
@@ -171,32 +195,32 @@ export function TrendAreaChart({
                 vectorEffect="non-scaling-stroke"
               />
             ))}
-            {showPageviews && (
-              <>
-                <path d={areaPath} fill={`url(#${gradientId})`} />
-                <path
-                  d={pvLine}
-                  fill="none"
-                  stroke="var(--color-brand)"
-                  strokeWidth={2.5}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </>
-            )}
-            {showUniques && (
+            {showPageviews && <path d={areaPath} fill={`url(#${gradientId})`} />}
+            {pvSegments.map((seg, i) => (
               <path
-                d={uqLine}
+                key={`pv-${i}`}
+                d={seg.d}
                 fill="none"
-                stroke="var(--color-brand-tint-text-strong)"
+                stroke={seg.color}
+                strokeWidth={2.5}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+            {uqSegments.map((seg, i) => (
+              <path
+                key={`uq-${i}`}
+                d={seg.d}
+                fill="none"
+                stroke={seg.color}
                 strokeWidth={2}
                 strokeDasharray="4 3"
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
               />
-            )}
+            ))}
             <line
               x1={x(focusIndex)}
               x2={x(focusIndex)}
@@ -239,7 +263,7 @@ export function TrendAreaChart({
                 width: 9,
                 height: 9,
                 borderRadius: "50%",
-                background: theme.color.brand,
+                background: thresholdColor(focus.pageviews / visibleMax),
                 border: `2px solid ${theme.color.cardBg}`,
                 transform: "translate(-50%, -50%)",
                 pointerEvents: "none",
@@ -256,7 +280,7 @@ export function TrendAreaChart({
                 width: 7,
                 height: 7,
                 borderRadius: "50%",
-                background: theme.color.brandTintTextStrong,
+                background: thresholdColor(focus.uniques / visibleMax),
                 border: `2px solid ${theme.color.cardBg}`,
                 transform: "translate(-50%, -50%)",
                 pointerEvents: "none",
@@ -305,10 +329,10 @@ export function TrendAreaChart({
               </div>
               <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", fontWeight: theme.font.weight.medium }}>
                 <span>
-                  <span style={{ color: theme.color.brand }}>●</span> {focus.pageviews} view{focus.pageviews === 1 ? "" : "s"}
+                  <span style={{ color: thresholdColor(focus.pageviews / visibleMax) }}>●</span> {focus.pageviews} view{focus.pageviews === 1 ? "" : "s"}
                 </span>
                 <span>
-                  <span style={{ opacity: 0.6 }}>●</span> {focus.uniques} unique{focus.uniques === 1 ? "" : "s"}
+                  <span style={{ color: thresholdColor(focus.uniques / visibleMax) }}>●</span> {focus.uniques} unique{focus.uniques === 1 ? "" : "s"}
                 </span>
               </div>
             </div>
