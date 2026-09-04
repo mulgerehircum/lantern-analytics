@@ -1,178 +1,286 @@
 import Link from "next/link";
 import { theme } from "@/lib/theme";
 import { FUNNELS_ENABLED, HEATMAPS_ENABLED } from "@/lib/flags";
-import { ProjectSelector } from "./ProjectSelector";
+import { HeaderProjectSwitcher } from "./HeaderProjectSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 
 export type View = "overview" | "pages" | "sources" | "events" | "sessions" | "experiments" | "funnels" | "heatmaps";
 
 /**
- * The dashboard's persistent left shell - logo, real site switcher, nav, and
- * a decorative "Filters" section (per the design handoff: those fields are
- * NOT wired to lib/filter.ts in this pass; real filtering happens via the
- * data-table row clicks and the "Path contains…" fallback input on Overview).
- * Server Component, no client JS - same convention as the rest of the app.
+ * Persistent left shell - logo, project pill, icon nav, active filters,
+ * workspace row. Server Component, no client JS of its own (project
+ * switching is the HeaderProjectSwitcher island; theme is ThemeToggle).
  */
 export function Sidebar({
   siteId,
   siteUrl,
   activeView,
   basePath,
+  liveCount,
+  activeFilter,
 }: {
   siteId: string;
   siteUrl?: string;
   activeView: View;
   basePath: string;
+  /** Current-hour live events - shows the Overview "Live" badge when > 0. */
+  liveCount?: number;
+  /** The overview page's real dimension filter, if one is active. */
+  activeFilter?: { label: string; value: string; clearHref: string };
 }) {
   const qs = `?siteId=${encodeURIComponent(siteId)}`;
+  const host = siteUrl?.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
   return (
     <aside
       style={{
-        width: 250,
+        width: 256,
         flexShrink: 0,
         background: theme.color.sidebarBg,
-        padding: "1.8rem 1.2rem",
+        borderRight: `1px solid ${theme.color.sidebarBorder}`,
+        display: "flex",
+        flexDirection: "column",
         // sticky + height (not minHeight) pins the sidebar to the viewport as
-        // the page scrolls, rather than just growing to at least one
-        // viewport tall - with minHeight alone, a page taller than 100vh
-        // left the sidebar's own background stopping at the first screen
-        // (its wrapping div in MobileNav still stretched to the page's full
-        // height via flex, but nothing made *this* element fill that space
-        // or track scroll position). overflowY lets the sidebar's own
-        // content scroll independently if it ever exceeds one viewport.
+        // the page scrolls. overflowY lets its own content scroll
+        // independently if it ever exceeds one viewport.
         position: "sticky",
         top: 0,
         height: "100vh",
         overflowY: "auto",
         boxSizing: "border-box",
-        borderRight: `1px solid ${theme.color.sidebarBorder}`,
-        display: "flex",
-        flexDirection: "column",
+        userSelect: "none",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.6rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", overflowY: "auto" }}>
         <div
           style={{
-            width: 32,
-            height: 32,
-            borderRadius: theme.radius.control,
-            background: theme.color.brand,
+            padding: "1rem",
+            paddingBottom: "0.75rem",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            color: theme.color.onBrand,
-            fontWeight: theme.font.weight.bold,
+            justifyContent: "space-between",
+            borderBottom: `1px solid ${theme.color.sidebarBorder}`,
           }}
         >
-          L
+          <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: theme.radius.control,
+                background: theme.color.brand,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: theme.color.onBrand,
+                fontWeight: theme.font.weight.bold,
+                fontSize: "1rem",
+              }}
+            >
+              L
+            </div>
+            <div>
+              <div style={{ fontWeight: theme.font.weight.bold, fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                Lantern
+                <span
+                  style={{
+                    fontSize: "0.625rem",
+                    padding: "0.125rem 0.375rem",
+                    borderRadius: theme.radius.small,
+                    fontWeight: theme.font.weight.semibold,
+                    background: theme.color.brandTintBg,
+                    color: theme.color.brandTintTextStrong,
+                    border: `1px solid ${theme.color.sidebarBorder}`,
+                  }}
+                >
+                  PRO
+                </span>
+              </div>
+              <div style={{ fontSize: "0.6875rem", color: theme.color.textMuted, fontWeight: theme.font.weight.medium }}>
+                Web Analytics
+              </div>
+            </div>
+          </div>
+          <span title="Settings" style={{ color: theme.color.textFaint, padding: "0.25rem", fontSize: "0.75rem" }}>
+            <i className="fa-solid fa-gear" />
+          </span>
         </div>
-        <div style={{ fontWeight: theme.font.weight.bold, fontSize: "0.95rem" }}>Lantern</div>
-      </div>
 
-      <ProjectSelector siteId={siteId} siteUrl={siteUrl} basePath={basePath} />
-
-      <nav style={{ display: "flex", flexDirection: "column", gap: "0.15rem", margin: "1.2rem 0 1.6rem" }}>
-        <NavLink label="Overview" href={`/${qs}`} active={activeView === "overview"} />
-        <NavLink label="Pages" href={`/pages${qs}`} active={activeView === "pages"} />
-        <NavLink label="Sources" href={`/sources${qs}`} active={activeView === "sources"} />
-        <NavLink label="Events" href={`/events${qs}`} active={activeView === "events"} />
-        <NavLink label="Sessions" href={`/sessions${qs}`} active={activeView === "sessions"} />
-        <NavLink label="Experiments" href={`/experiments${qs}`} active={activeView === "experiments"} />
-        {FUNNELS_ENABLED && <NavLink label="Funnels" href={`/funnels${qs}`} active={activeView === "funnels"} />}
-        {HEATMAPS_ENABLED && <NavLink label="Heatmaps" href={`/heatmaps${qs}`} active={activeView === "heatmaps"} />}
-      </nav>
-
-      <div style={{ height: 1, background: theme.color.sidebarBorder, marginBottom: "1.4rem" }} />
-
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.9rem" }}>
-        <div style={{ fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.06em", color: theme.color.textMutedLight }}>
-          Filters
+        <div style={{ padding: "0.75rem", borderBottom: `1px solid ${theme.color.sidebarBorder}` }}>
+          <div
+            style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: theme.color.cardBg,
+              padding: "0.5rem 0.75rem",
+              borderRadius: theme.radius.control,
+              border: `1px solid ${theme.color.border}`,
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0, flex: 1 }}>
+              <span className="lantern-ping" style={{ width: 8, height: 8, borderRadius: "50%", background: theme.color.brand, display: "inline-block", flexShrink: 0 }} />
+              <HeaderProjectSwitcher siteId={siteId} />
+            </span>
+          </div>
+          {siteUrl && (
+            <a
+              href={siteUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                marginTop: "0.5rem",
+                fontSize: "0.6875rem",
+                color: theme.color.textMuted,
+                display: "flex",
+                alignItems: "center",
+                gap: "0.375rem",
+                padding: "0 0.25rem",
+                textDecoration: "none",
+              }}
+            >
+              <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: "0.625rem", color: theme.color.textFaint }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "underline", textUnderlineOffset: 2, textDecorationColor: theme.color.underline }}>
+                {host}
+              </span>
+            </a>
+          )}
         </div>
-        <span style={{ fontSize: "0.72rem", color: theme.color.brand }}>Clear</span>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-        <DecorativeField label="Path">
-          <input type="text" placeholder="/any" style={underlineFieldStyle} disabled />
-        </DecorativeField>
-        <DecorativeField label="Referrer">
-          <select style={underlineFieldStyle} disabled>
-            <option>All</option>
-          </select>
-        </DecorativeField>
-        <DecorativeField label="Country">
-          <select style={underlineFieldStyle} disabled>
-            <option>All</option>
-          </select>
-        </DecorativeField>
-        <DecorativeField label="Device">
-          <select style={underlineFieldStyle} disabled>
-            <option>All</option>
-          </select>
-        </DecorativeField>
-        <DecorativeField label="Event">
-          <select style={underlineFieldStyle} disabled>
-            <option>All</option>
-          </select>
-        </DecorativeField>
-      </div>
 
-      <div style={{ flex: 1 }} />
-      {siteUrl && (
-        <a
-          href={siteUrl}
-          target="_blank"
-          rel="noreferrer"
-          style={{ display: "block", marginTop: "1.6rem", fontSize: "0.8rem", color: theme.color.brand, textDecoration: "none", fontWeight: theme.font.weight.semibold }}
+        <nav aria-label="Main Navigation" style={{ padding: "0.75rem" }}>
+          <div style={{ padding: "0 0.5rem 0.375rem", fontSize: "0.625rem", fontWeight: theme.font.weight.bold, letterSpacing: "0.06em", textTransform: "uppercase", color: theme.color.textFaint }}>
+            Analytics
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <NavLink label="Overview" href={`/${qs}`} icon="fa-chart-line" active={activeView === "overview"} badge={liveCount && liveCount > 0 ? "Live" : undefined} />
+            <NavLink label="Pages" href={`/pages${qs}`} icon="fa-file-lines" iconRegular active={activeView === "pages"} />
+            <NavLink label="Sources" href={`/sources${qs}`} icon="fa-bullseye" active={activeView === "sources"} />
+            <NavLink label="Events" href={`/events${qs}`} icon="fa-bolt" active={activeView === "events"} />
+            <NavLink label="Sessions" href={`/sessions${qs}`} icon="fa-user-group" active={activeView === "sessions"} />
+          </div>
+          <div style={{ padding: "0.75rem 0.5rem 0.375rem", fontSize: "0.625rem", fontWeight: theme.font.weight.bold, letterSpacing: "0.06em", textTransform: "uppercase", color: theme.color.textFaint }}>
+            Insights & Labs
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <NavLink label="Experiments" href={`/experiments${qs}`} icon="fa-flask-vial" active={activeView === "experiments"} />
+            {FUNNELS_ENABLED && <NavLink label="Funnels" href={`/funnels${qs}`} icon="fa-filter-circle-dollar" active={activeView === "funnels"} />}
+            {HEATMAPS_ENABLED && <NavLink label="Heatmaps" href={`/heatmaps${qs}`} icon="fa-fire" active={activeView === "heatmaps"} />}
+          </div>
+        </nav>
+
+        <div style={{ padding: "0.75rem", marginTop: "auto", borderTop: `1px solid ${theme.color.sidebarBorder}` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 0.5rem", marginBottom: "0.5rem" }}>
+            <span style={{ fontSize: "0.625rem", fontWeight: theme.font.weight.bold, letterSpacing: "0.06em", textTransform: "uppercase", color: theme.color.textFaint }}>
+              Active Filters
+            </span>
+            {activeFilter && (
+              <Link href={activeFilter.clearHref} style={{ fontSize: "0.625rem", fontWeight: theme.font.weight.medium, color: theme.color.brand, textDecoration: "none" }}>
+                Reset
+              </Link>
+            )}
+          </div>
+          {activeFilter ? (
+            <div style={{ background: theme.color.cardBg, padding: "0.5rem", borderRadius: theme.radius.small, border: `1px solid ${theme.color.cardBorder}` }}>
+              <div style={{ fontSize: "0.625rem", color: theme.color.textMuted, fontWeight: theme.font.weight.medium }}>{activeFilter.label}</div>
+              <div style={{ fontSize: "0.75rem", fontFamily: theme.font.mono, color: theme.color.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: theme.font.weight.semibold }}>
+                {activeFilter.value}
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: "0 0.5rem", fontSize: "0.72rem", color: theme.color.textFaint }}>None</div>
+          )}
+        </div>
+
+        <div
+          style={{
+            padding: "0.75rem",
+            borderTop: `1px solid ${theme.color.sidebarBorder}`,
+            background: theme.color.sidebarBg,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
         >
-          View live site ↗
-        </a>
-      )}
-      <ThemeToggle />
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                background: theme.color.text,
+                color: theme.color.bg,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.75rem",
+                fontWeight: theme.font.weight.bold,
+                fontFamily: theme.font.mono,
+              }}
+            >
+              N
+            </div>
+            <div style={{ lineHeight: 1.2 }}>
+              <div style={{ fontSize: "0.75rem", fontWeight: theme.font.weight.semibold, color: theme.color.text }}>Workspace</div>
+              <div style={{ fontSize: "0.625rem", color: theme.color.textFaint }}>Free Tier</div>
+            </div>
+          </div>
+          <ThemeToggle />
+        </div>
+      </div>
     </aside>
   );
 }
 
-function NavLink({ label, href, active }: { label: string; href: string; active: boolean }) {
+function NavLink({
+  label,
+  href,
+  icon,
+  iconRegular,
+  active,
+  badge,
+}: {
+  label: string;
+  href: string;
+  icon: string;
+  iconRegular?: boolean;
+  active: boolean;
+  badge?: string;
+}) {
   return (
     <Link
       href={href}
       style={{
-        padding: "0.55rem 0.7rem 0.55rem 0.9rem",
-        fontSize: "0.85rem",
-        textDecoration: "none",
-        borderLeft: active ? `3px solid ${theme.color.brand}` : "3px solid transparent",
+        display: "flex",
+        alignItems: "center",
+        gap: "0.625rem",
+        padding: "0.5rem 0.75rem",
+        borderRadius: theme.radius.control,
+        fontSize: "0.75rem",
+        fontWeight: active ? theme.font.weight.semibold : theme.font.weight.medium,
         background: active ? theme.color.brandTintBg : "transparent",
-        color: active ? theme.color.brandTintText : theme.color.textMuted,
-        fontWeight: active ? theme.font.weight.semibold : theme.font.weight.regular,
+        color: active ? theme.color.brandTintTextStrong : theme.color.textMuted,
+        border: active ? `1px solid ${theme.color.sidebarBorder}` : "1px solid transparent",
+        textDecoration: "none",
       }}
     >
-      {label}
+      <i className={`${iconRegular ? "fa-regular" : "fa-solid"} ${icon}`} style={{ width: 16, textAlign: "center", color: active ? theme.color.brand : theme.color.textFaint, fontSize: "0.8rem" }} />
+      <span>{label}</span>
+      {badge && (
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: "0.625rem",
+            background: theme.color.brand,
+            color: theme.color.onBrand,
+            fontWeight: theme.font.weight.bold,
+            padding: "0.125rem 0.375rem",
+            borderRadius: theme.radius.pill,
+          }}
+        >
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
-
-function DecorativeField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label style={{ fontSize: "0.78rem", color: theme.color.textMuted, display: "block" }}>
-      {label}
-      <br />
-      {children}
-    </label>
-  );
-}
-
-const underlineFieldStyle: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  border: "none",
-  borderBottom: `1px solid ${theme.color.underline}`,
-  borderRadius: 0,
-  padding: "5px 2px",
-  fontSize: "0.82rem",
-  fontFamily: "inherit",
-  marginTop: 4,
-  boxSizing: "border-box",
-  background: "none",
-  color: theme.color.textMuted,
-};

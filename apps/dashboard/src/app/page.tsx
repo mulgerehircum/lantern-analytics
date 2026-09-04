@@ -14,7 +14,7 @@ import { AiQueryBox } from "@/components/AiQueryBox";
 import { ChartCard } from "@/components/ChartCard";
 import type { Chart } from "@/components/ChartCard";
 import { HeaderBar } from "@/components/HeaderBar";
-import { MetricRow } from "@/components/StatCards";
+import { DevicesCard, CustomEventTiles } from "@/components/BreakdownCards";
 import { buildOverviewCsv, formatHeaderRangeLabel } from "@/lib/header";
 import { DataTableCard } from "@/components/DataTableCard";
 import type { DataTableRow } from "@/components/DataTableCard";
@@ -220,18 +220,6 @@ export default async function DashboardPage({
     active: isActiveRowFilter(filters, "country", c.country),
     renderKey: () => <CountryLabel code={c.country} />,
   }));
-  const deviceRows: DataTableRow[] = summary.devices.map((d) => ({
-    key: d.device || "(empty)",
-    count: d.count,
-    href: buildRowFilterHref(siteId, "device", d.device),
-    active: isActiveRowFilter(filters, "device", d.device),
-  }));
-  const customEventRows: DataTableRow[] = summary.customEvents.map((e) => ({
-    key: e.name || "(empty)",
-    count: e.count,
-    href: buildRowFilterHref(siteId, "eventName", e.name),
-    active: isActiveRowFilter(filters, "eventName", e.name),
-  }));
   const customEventDetailRows: DataTableRow[] = summary.customEventBreakdown.map((b) => ({
     key: `${b.name} · ${b.dimension}: ${b.value}`,
     count: b.count,
@@ -246,27 +234,29 @@ export default async function DashboardPage({
       activeView="overview"
       basePath="/"
       filterChip={filtered ? buildFilterChip(siteId, filters) : undefined}
+      liveCount={!filtered ? liveEvents.length : 0}
+      header={
+        <HeaderBar
+          siteId={siteId}
+          siteName={site ? site.name : siteId}
+          siteUrl={site?.url}
+          liveVisitors={!filtered ? liveRollup.uniques : 0}
+          selectedPeriod={selectedPeriod}
+          isDay={isDay}
+          isHour={isHour}
+          searchDefault={filters.path}
+          overviewCsv={buildOverviewCsv({
+            periodLabel: formatHeaderRangeLabel(selectedPeriod, isDay, isHour),
+            pageviews: summary.totalPageviews,
+            uniques: summary.totalUniques,
+            topPages: summary.topPages.map((p) => ({ path: p.path, count: p.count })),
+            referrers: summary.referrers.map((r) => ({ referrer: r.referrer, count: r.count })),
+            countries: summary.countries.map((c) => ({ country: c.country, count: c.count })),
+          })}
+          csvFilename={`${siteId}-overview-${selectedPeriod ?? "all-time"}.csv`}
+        />
+      }
     >
-      <HeaderBar
-        siteId={siteId}
-        siteName={site ? site.name : siteId}
-        unregistered={!site}
-        siteUrl={site?.url}
-        liveVisitors={!filtered ? liveRollup.uniques : 0}
-        selectedPeriod={selectedPeriod}
-        isDay={isDay}
-        isHour={isHour}
-        searchDefault={filters.path}
-        overviewCsv={buildOverviewCsv({
-          periodLabel: formatHeaderRangeLabel(selectedPeriod, isDay, isHour),
-          pageviews: summary.totalPageviews,
-          uniques: summary.totalUniques,
-          topPages: summary.topPages.map((p) => ({ path: p.path, count: p.count })),
-          referrers: summary.referrers.map((r) => ({ referrer: r.referrer, count: r.count })),
-          countries: summary.countries.map((c) => ({ country: c.country, count: c.count })),
-        })}
-        csvFilename={`${siteId}-overview-${selectedPeriod ?? "all-time"}.csv`}
-      />
 
       {filtered && (
         <p style={{ color: theme.color.amber, fontSize: "0.85rem", margin: "0 0 1rem" }}>
@@ -275,29 +265,22 @@ export default async function DashboardPage({
         </p>
       )}
 
-      <MetricRow
+      <ChartCard
+        siteId={siteId}
         pageviews={summary.totalPageviews}
         uniques={summary.totalUniques}
         pageviewsDelta={comparison?.pageviewsDeltaPercent}
         uniquesDelta={comparison?.uniquesDeltaPercent}
         previousPageviews={previousSummary?.totalPageviews}
         sessionsSummary={sessionsSummary}
-      />
-
-      <ChartCard
-        siteId={siteId}
-        pageviews={summary.totalPageviews}
-        uniques={summary.totalUniques}
-        liveCount={!filtered ? liveEvents.length : 0}
         selectedPeriod={selectedPeriod}
         isDay={isDay}
         isHour={isHour}
         showPeriodNav={!filtered}
-        comparison={comparison}
         chart={chart}
       />
 
-      <div className="lantern-grid-2" style={{ marginBottom: "1.25rem" }}>
+      <div className="lantern-grid-8-4" style={{ marginBottom: "1.25rem" }}>
         {insights ? <InsightsBox insights={insights} /> : <div style={{ ...card }}><p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>No insights yet - not enough data.</p></div>}
         {filtered ? (
           <div style={{ ...card }}>
@@ -309,18 +292,45 @@ export default async function DashboardPage({
       </div>
 
       <div className="lantern-grid-3">
-        <DataTableCard title="Top pages" rows={topPageRows} initialVisibleCount={10} exportFilename={`${siteId}-top-pages.csv`} />
-        <DataTableCard title="Referrers" rows={referrerRows} initialVisibleCount={10} exportFilename={`${siteId}-referrers.csv`} />
-        <DataTableCard title="Countries" rows={countryRows} initialVisibleCount={10} exportFilename={`${siteId}-countries.csv`} />
+        <DataTableCard
+          title="Top pages"
+          icon="fa-regular fa-folder"
+          rows={topPageRows}
+          initialVisibleCount={10}
+          exportFilename={`${siteId}-top-pages.csv`}
+          footnote={
+            summary.topPages.length <= 2
+              ? "Single-page architecture detected. Deep-link sections are tracked via Custom Events below."
+              : undefined
+          }
+        />
+        <DataTableCard title="Referrers" icon="fa-solid fa-arrow-turn-down" rows={referrerRows} initialVisibleCount={10} exportFilename={`${siteId}-referrers.csv`} />
+        <DataTableCard
+          title="Countries"
+          icon="fa-solid fa-earth-americas"
+          rows={countryRows}
+          initialVisibleCount={10}
+          exportFilename={`${siteId}-countries.csv`}
+          searchAlways
+          searchPlaceholder="Search country..."
+          listMaxHeight="13rem"
+        />
       </div>
 
-      <div className="lantern-grid-2" style={{ marginTop: "1rem" }}>
-        <DataTableCard title="Devices" rows={deviceRows} initialVisibleCount={10} exportFilename={`${siteId}-devices.csv`} />
-        <DataTableCard title="Custom events" rows={customEventRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-events.csv`} />
+      <div className="lantern-grid-1-2" style={{ marginTop: "1rem" }}>
+        <DevicesCard devices={summary.devices} periodLabel={formatHeaderRangeLabel(selectedPeriod, isDay, isHour)} />
+        <CustomEventTiles events={summary.customEvents} exportFilename={`${siteId}-custom-events.csv`} />
       </div>
 
       <div style={{ marginTop: "1rem" }}>
-        <DataTableCard title="Custom event details" rows={customEventDetailRows} initialVisibleCount={10} exportFilename={`${siteId}-custom-event-details.csv`} />
+        <DataTableCard
+          title="Custom Event Details"
+          subtitle="Deep telemetry tags captured via client SDK"
+          icon="fa-solid fa-list-check"
+          rows={customEventDetailRows}
+          initialVisibleCount={10}
+          exportFilename={`${siteId}-custom-event-details.csv`}
+        />
       </div>
     </AppShell>
   );
@@ -333,29 +343,112 @@ export default async function DashboardPage({
  */
 function InsightsBox({ insights }: { insights: Insight[] }) {
   return (
-    <div style={{ ...card, marginBottom: "1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.9rem" }}>
-        <div style={{ fontWeight: theme.font.weight.semibold, fontSize: "0.85rem" }}>Insights</div>
-        <div
-          style={{
-            fontSize: "0.62rem",
-            fontWeight: theme.font.weight.bold,
-            letterSpacing: "0.04em",
-            color: theme.color.brand,
-            background: theme.color.brandTintBg,
-            padding: "0.15rem 0.45rem",
-            borderRadius: theme.radius.small,
-          }}
-        >
-          AI Automated
+    <div
+      style={{
+        ...card,
+        marginBottom: "1.5rem",
+        background: `linear-gradient(135deg, ${theme.color.brandTintBg}, ${theme.color.cardBg} 55%, ${theme.color.bg})`,
+        border: `1px solid ${theme.color.border}`,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.5rem",
+          paddingBottom: "0.75rem",
+          borderBottom: `1px solid ${theme.color.border}`,
+          marginBottom: "0.875rem",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: theme.radius.small,
+              background: theme.color.brand,
+              color: theme.color.onBrand,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.75rem",
+            }}
+          >
+            <i className="fa-solid fa-wand-magic-sparkles" />
+          </span>
+          <div style={{ fontWeight: theme.font.weight.bold, fontSize: "0.875rem" }}>Insights & Recommendations</div>
+          <div
+            style={{
+              fontSize: "0.625rem",
+              fontFamily: theme.font.mono,
+              fontWeight: theme.font.weight.semibold,
+              color: theme.color.brandTintTextStrong,
+              background: theme.color.brandTintBg,
+              border: `1px solid ${theme.color.border}`,
+              padding: "0.125rem 0.5rem",
+              borderRadius: theme.radius.pill,
+            }}
+          >
+            AI Automated
+          </div>
         </div>
       </div>
-      {insights.map((insight, i) => (
-        <div key={i} style={{ marginBottom: "0.7rem" }}>
-          <div style={{ fontSize: "0.86rem" }}>{insight.observation}</div>
-          <div style={{ fontSize: "0.8rem", color: theme.color.brandTintTextStrong, marginTop: "0.15rem" }}>-&gt; {insight.action}</div>
-        </div>
-      ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        {insights.map((insight, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              gap: "0.75rem",
+              alignItems: "flex-start",
+              background: theme.color.cardBg,
+              border: `1px solid ${theme.color.cardBorder}`,
+              padding: "0.625rem",
+              borderRadius: theme.radius.control,
+            }}
+          >
+            {insight.category && (
+              <span
+                style={{
+                  flexShrink: 0,
+                  marginTop: "0.125rem",
+                  fontSize: "0.625rem",
+                  fontWeight: theme.font.weight.bold,
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                  color: theme.color.textMuted,
+                  background: theme.color.bg,
+                  border: `1px solid ${theme.color.border}`,
+                  padding: "0.125rem 0.5rem",
+                  borderRadius: theme.radius.small,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {insight.category}
+              </span>
+            )}
+            <div style={{ minWidth: 0, fontSize: "0.75rem", lineHeight: 1.6, color: theme.color.text }}>
+              <div>{insight.observation}</div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  marginTop: "0.25rem",
+                  fontSize: "0.6875rem",
+                  fontWeight: theme.font.weight.medium,
+                  color: theme.color.brandTintTextStrong,
+                }}
+              >
+                <i className="fa-solid fa-arrow-right" style={{ fontSize: "0.625rem" }} />
+                <span>{insight.action}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

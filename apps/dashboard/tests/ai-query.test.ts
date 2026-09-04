@@ -120,6 +120,13 @@ describe("INSIGHTS_SYSTEM_PROMPT", () => {
     expect(INSIGHTS_SYSTEM_PROMPT).toContain("action:");
   });
 
+  it("asks for one ACQUISITION/PLATFORM/CONTENT category per insight", () => {
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("category:");
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("ACQUISITION");
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("PLATFORM");
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("CONTENT");
+  });
+
   it("steers toward customEvents/customEventBreakdown for actionable engagement signal", () => {
     expect(INSIGHTS_SYSTEM_PROMPT).toContain("customEvents");
     expect(INSIGHTS_SYSTEM_PROMPT).toContain("customEventBreakdown");

@@ -62,78 +62,116 @@ export function AiQueryBox({ siteId, monthPrefix }: { siteId: string; monthPrefi
   }
 
   return (
-    <div style={{ ...card, marginBottom: "1.5rem" }}>
-      <div style={{ fontWeight: theme.font.weight.semibold, fontSize: "0.85rem", marginBottom: "0.7rem" }}>Ask about your data</div>
-      <form onSubmit={handleSubmit} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start", flexWrap: "wrap" }}>
-        <input
-          type="text"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="e.g. Which referrer sends the most engaged visitors?"
-          disabled={status === "loading"}
-          style={{
-            flex: 1,
-            minWidth: 240,
-            border: `1px solid ${theme.color.fieldBorder}`,
-            borderRadius: theme.radius.small,
-            padding: "6px 8px",
-            fontSize: "0.85rem",
-            fontFamily: "inherit",
-          }}
-        />
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          style={{
-            padding: "6px 12px",
-            borderRadius: theme.radius.small,
-            border: "none",
-            background: canSubmit ? theme.color.brand : theme.color.fieldBorder,
-            color: theme.color.onBrand,
-            fontSize: "0.85rem",
-            cursor: canSubmit ? "pointer" : "default",
-          }}
-        >
-          {status === "loading" ? "Asking…" : "Ask"}
-        </button>
-      </form>
+    <div style={{ ...card, marginBottom: "1.5rem", display: "flex", flexDirection: "column" }}>
       <div
-        style={{ fontSize: "0.72rem", color: theme.color.textMuted, marginTop: "0.3rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingBottom: "0.75rem",
+          borderBottom: `1px solid ${theme.color.border}`,
+        }}
       >
-        <span>
-          {question.length} / {MAX_QUESTION_LENGTH} chars
-          {tooLong && " - too long"}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <i className="fa-regular fa-comment-dots" style={{ color: theme.color.textMuted, fontSize: "0.8rem" }} />
+          <div style={{ fontWeight: theme.font.weight.bold, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Ask about your data
+          </div>
+        </div>
         <span
           style={{
-            border: `1px solid ${theme.color.fieldBorder}`,
+            fontSize: "0.625rem",
+            fontFamily: theme.font.mono,
+            color: theme.color.textMuted,
+            background: theme.color.bg,
+            border: `1px solid ${theme.color.border}`,
+            padding: "0.125rem 0.375rem",
             borderRadius: theme.radius.small,
-            padding: "0 0.35rem",
-            fontSize: "0.68rem",
           }}
         >
           ⌘K
         </span>
       </div>
-      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.6rem" }}>
-        {["Referrer conversion comparison", "Geolocation drop-offs"].map((suggestion) => (
+      <p style={{ fontSize: "0.75rem", color: theme.color.textMuted, marginTop: "0.625rem", lineHeight: 1.6 }}>
+        Query traffic, drop-off spots, or custom events in human natural language.
+      </p>
+      <form onSubmit={handleSubmit} style={{ marginTop: "0.75rem" }}>
+        <textarea
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="e.g. Which referrer sends the highest iframe interaction rate?"
+          disabled={status === "loading"}
+          rows={3}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            border: `1px solid ${theme.color.fieldBorder}`,
+            borderRadius: theme.radius.control,
+            padding: "0.625rem",
+            fontSize: "0.75rem",
+            fontFamily: "inherit",
+            color: theme.color.text,
+            background: theme.color.bg,
+            resize: "none",
+          }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.5rem" }}>
+          <span style={{ fontSize: "0.625rem", fontFamily: theme.font.mono, color: theme.color.textFaint }}>
+            {question.length} / {MAX_QUESTION_LENGTH} chars
+            {tooLong && " - too long"}
+          </span>
           <button
-            key={suggestion}
-            type="button"
-            onClick={() => setQuestion(suggestion)}
+            type="submit"
+            disabled={!canSubmit}
             style={{
-              fontSize: "0.72rem",
-              color: theme.color.brandTintTextStrong,
-              background: theme.color.brandTintBg,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.375rem",
+              padding: "0.25rem 0.75rem",
+              borderRadius: theme.radius.small,
               border: "none",
-              borderRadius: theme.radius.pill,
-              padding: "0.25rem 0.6rem",
-              cursor: "pointer",
+              background: canSubmit ? theme.color.brand : theme.color.fieldBorder,
+              color: theme.color.onBrand,
+              fontSize: "0.75rem",
+              fontWeight: theme.font.weight.semibold,
+              cursor: canSubmit ? "pointer" : "default",
             }}
           >
-            {suggestion}
+            <span>{status === "loading" ? "Asking…" : "Ask"}</span>
+            <i className="fa-solid fa-arrow-up" style={{ fontSize: "0.5625rem" }} />
           </button>
-        ))}
+        </div>
+      </form>
+      <div style={{ paddingTop: "0.75rem", borderTop: `1px solid ${theme.color.border}`, marginTop: "0.75rem" }}>
+        <div style={{ fontSize: "0.625rem", textTransform: "uppercase", fontWeight: theme.font.weight.bold, color: theme.color.textFaint, letterSpacing: "0.06em" }}>
+          Suggested queries
+        </div>
+        <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+          {[
+            { icon: "⚡", text: "Referrer conversion comparison" },
+            { icon: "🗺", text: "Geolocation drop-offs" },
+          ].map((suggestion) => (
+            <button
+              key={suggestion.text}
+              type="button"
+              onClick={() => setQuestion(suggestion.text)}
+              className="lantern-chip"
+              style={{
+                fontSize: "0.6875rem",
+                color: theme.color.textMuted,
+                background: theme.color.bg,
+                border: `1px solid ${theme.color.border}`,
+                borderRadius: theme.radius.small,
+                padding: "0.25rem 0.5rem",
+                cursor: "pointer",
+                textAlign: "left",
+                maxWidth: "100%",
+              }}
+            >
+              {suggestion.icon} {suggestion.text}
+            </button>
+          ))}
+        </div>
       </div>
 
       {status === "answered" && answer && (

@@ -26,22 +26,27 @@ export function HeaderSearch({ siteId, defaultValue }: { siteId: string; default
   }, []);
 
   return (
-    <form method="GET" action="/" className="lantern-header-collapsible" style={{ margin: 0 }}>
+    <form method="GET" action="/" className="lantern-header-collapsible" style={{ margin: 0, position: "relative" }}>
       <input type="hidden" name="siteId" value={siteId} />
+      <i
+        className="fa-solid fa-magnifying-glass"
+        aria-hidden
+        style={{ position: "absolute", left: "0.625rem", top: "50%", transform: "translateY(-50%)", color: theme.color.textFaint, fontSize: "0.75rem" }}
+      />
       <input
         ref={inputRef}
         type="text"
         name="path"
         defaultValue={defaultValue ?? ""}
-        placeholder="Q /"
+        placeholder="Filter path: /"
         aria-label="Filter by path"
         style={{
           height: 32,
-          width: 112,
-          background: theme.color.cardBg,
+          width: 144,
+          background: theme.color.bg,
           border: `1px solid ${theme.color.fieldBorder}`,
-          borderRadius: theme.radius.small,
-          padding: "0 0.6rem",
+          borderRadius: theme.radius.control,
+          padding: "0 0.6rem 0 1.75rem",
           fontSize: "0.75rem",
           fontFamily: "inherit",
           color: theme.color.text,

@@ -78,8 +78,8 @@ describe("summarizeRollups", () => {
       rollup({ SK: "AGG#2026-08-08#11", pageviews: 4 }),
     ]);
     expect(result.timeSeries).toEqual([
-      { hour: "2026-08-08T11:00:00.000Z", pageviews: 4 },
-      { hour: "2026-08-08T14:00:00.000Z", pageviews: 10 },
+      { hour: "2026-08-08T11:00:00.000Z", pageviews: 4, uniques: 0 },
+      { hour: "2026-08-08T14:00:00.000Z", pageviews: 10, uniques: 0 },
     ]);
   });
 

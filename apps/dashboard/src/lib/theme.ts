@@ -36,14 +36,15 @@ export const theme = {
     onBrand: "var(--color-on-brand)",
   },
   radius: {
-    card: 14,
+    card: 10,
     control: 10,
     pill: 999,
     small: 6,
   },
   font: {
-    family: "'Figtree', system-ui, sans-serif",
-    weight: { regular: 400, medium: 500, semibold: 600, bold: 700 },
+    family: "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    mono: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+    weight: { regular: 400, medium: 500, semibold: 600, bold: 700, extrabold: 800 },
   },
 } as const;
 

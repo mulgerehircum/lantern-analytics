@@ -1,63 +1,47 @@
 import { card, theme } from "@/lib/theme";
-import type { DailyTrendPoint, MonthlyTrendPoint, PeriodComparison } from "@/lib/summarize";
+import { formatDayLabel, formatMonthLabel } from "@/lib/months";
+import { formatHeaderRangeLabel, formatMonthRangeShort, headerGranularityLabel } from "@/lib/header";
+import type { DailyTrendPoint, MonthlyTrendPoint, SessionsSummary } from "@/lib/summarize";
 import { Breadcrumb } from "./Breadcrumb";
-import { DayNav, MonthNav } from "./PeriodNav";
-import { HourNav } from "./HourNav";
-import { DailyTrendChart, MonthlyTrendChart, TimeSeriesChart } from "./TrendCharts";
+import { MetricRow } from "./StatCards";
+import { TrendAreaChart } from "./TrendAreaChart";
+import type { TrendPoint } from "./TrendAreaChart";
 
 export type Chart =
   | { kind: "monthly"; data: MonthlyTrendPoint[] }
   | { kind: "daily"; data: DailyTrendPoint[] }
-  | { kind: "hourly"; data: Array<{ hour: string; pageviews: number }> }
+  | { kind: "hourly"; data: Array<{ hour: string; pageviews: number; uniques: number }> }
   | null;
 
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 /**
- * The Overview page's stats + drill-down chart card - combines the
- * Pageviews/Uniques numbers, the live-data badge, a breadcrumb trail (which
- * level is a link "up") plus a secondary prev/next affordance, and exactly
- * one bar chart matching the current drill depth.
+ * The overview hero card - breadcrumb trail (which level is a link "up"),
+ * the 4-KPI metric row, then one area chart matching the current drill
+ * depth (root->monthly, month->daily, day->hourly; hour is the finest
+ * granularity). Every chart point links one level deeper.
  */
-function formatRangeLabel(selectedPeriod: string | undefined, isDay: boolean, isHour: boolean): string {
-  if (!selectedPeriod) return "All time";
-  if (isHour) {
-    const d = new Date(`${selectedPeriod}:00:00.000Z`);
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) + ` - ${selectedPeriod.split("T")[1]}:00`;
-  }
-  if (isDay) {
-    const d = new Date(`${selectedPeriod}T00:00:00.000Z`);
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  }
-  const [y, m] = selectedPeriod.split("-").map(Number);
-  const start = new Date(Date.UTC(y, m - 1, 1));
-  const end = new Date(Date.UTC(y, m, 0));
-  const s = start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  const e = end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  return `${s} - ${e}`;
-}
-
-function granularityLabel(chart: Chart, selectedPeriod: string | undefined, isDay: boolean, isHour: boolean): string {
-  if (!selectedPeriod) return "Monthly";
-  if (isHour) return "Hourly";
-  if (isDay) return "Hourly";
-  return "Daily";
-}
-
 export function ChartCard({
   siteId,
   pageviews,
   uniques,
-  liveCount,
+  pageviewsDelta,
+  uniquesDelta,
+  previousPageviews,
+  sessionsSummary,
   selectedPeriod,
   isDay,
   isHour,
   showPeriodNav = true,
-  comparison,
   chart,
 }: {
   siteId: string;
   pageviews: number;
   uniques: number;
-  liveCount: number;
+  pageviewsDelta?: number | null;
+  uniquesDelta?: number | null;
+  previousPageviews?: number;
+  sessionsSummary: SessionsSummary;
   selectedPeriod?: string;
   isDay: boolean;
   isHour: boolean;
@@ -65,84 +49,92 @@ export function ChartCard({
    *  scoping is bypassed during filtering (see lib/filter.ts), so a
    *  breadcrumb tied to it would be misleading rather than just stale. */
   showPeriodNav?: boolean;
-  /** vs. the immediately preceding equivalent period - undefined at "all
-   *  time" root (no natural single previous period) or while filtered. */
-  comparison?: PeriodComparison;
   chart: Chart;
 }) {
-  const granularity = granularityLabel(chart, selectedPeriod, isDay, isHour);
-  const rangeLabel = formatRangeLabel(selectedPeriod, isDay, isHour);
-  const hasLive = liveCount > 0;
+  const granularity = headerGranularityLabel(selectedPeriod, isDay, isHour);
+  // The chart header uses the compact month form ("Sep 1 - Sep 30, 2026");
+  // every other depth shares the header pill's full label.
+  const rangeLabel =
+    selectedPeriod && !isDay && !isHour ? formatMonthRangeShort(selectedPeriod) : formatHeaderRangeLabel(selectedPeriod, isDay, isHour);
+  const points = chart ? toTrendPoints(chart, siteId) : [];
   return (
-    <div style={{ ...card, marginBottom: "1.5rem" }}>
-      {/* Header: breadcrumb + live pill per spec */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.8rem", flexWrap: "wrap", gap: "0.6rem" }}>
-        {showPeriodNav ? (
-          <Breadcrumb siteId={siteId} selectedPeriod={selectedPeriod} isDay={isDay} isHour={isHour} />
-        ) : (
-          <span style={{ fontSize: "0.78rem", color: theme.color.textMuted }}>Filtered view</span>
-        )}
-        {hasLive ? (
-          <span
-            title="Current-hour events, not rolled up yet"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.35rem",
-              background: theme.color.brandTintBg,
-              color: theme.color.brandTintTextStrong,
-              fontSize: "0.72rem",
-              fontWeight: theme.font.weight.semibold,
-              padding: "0.25rem 0.6rem",
-              borderRadius: theme.radius.pill,
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: theme.color.brand, display: "inline-block" }} />
-            {liveCount} live
-          </span>
-        ) : null}
-      </div>
-
+    <div style={{ ...card, marginBottom: "1.25rem" }}>
       {showPeriodNav && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
-          <div style={{ fontSize: "0.72rem", color: theme.color.textMuted }}>
-            Granularity: {granularity} - {rangeLabel}
-          </div>
-          {isHour ? (
-            <HourNav siteId={siteId} hour={selectedPeriod!} />
-          ) : isDay ? (
-            <DayNav siteId={siteId} day={selectedPeriod!} />
-          ) : selectedPeriod ? (
-            <MonthNav siteId={siteId} month={selectedPeriod} />
-          ) : null}
+        <div style={{ marginBottom: "1.25rem" }}>
+          <Breadcrumb siteId={siteId} selectedPeriod={selectedPeriod} isDay={isDay} isHour={isHour} />
         </div>
       )}
 
-      {/* Legend per spec */}
-      <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "0.6rem", fontSize: "0.72rem", color: theme.color.textMuted }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-          <span style={{ width: 10, height: 10, background: theme.color.brand, borderRadius: 2, display: "inline-block" }} />
-          Pageviews ({pageviews})
-        </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
-          <span style={{ width: 10, height: 10, background: theme.color.textMuted, borderRadius: 2, display: "inline-block" }} />
-          Uniques ({uniques})
-        </span>
+      <div style={{ paddingBottom: "1.25rem", borderBottom: `1px solid ${theme.color.border}`, marginBottom: "1.25rem" }}>
+        <MetricRow
+          pageviews={pageviews}
+          uniques={uniques}
+          pageviewsDelta={pageviewsDelta}
+          uniquesDelta={uniquesDelta}
+          previousPageviews={previousPageviews}
+          sessionsSummary={sessionsSummary}
+        />
       </div>
 
-      {/* Area fill container - vertical gradient from rgba(85,138,48,0.15) to transparent */}
-      <div
-        style={{
-          background: "linear-gradient(to bottom, rgba(85,138,48,0.15), transparent)",
-          borderRadius: theme.radius.small,
-          padding: "0.6rem 0.4rem 0.2rem",
-        }}
-      >
-        {chart?.kind === "monthly" && <MonthlyTrendChart siteId={siteId} data={chart.data} />}
-        {chart?.kind === "daily" && <DailyTrendChart siteId={siteId} data={chart.data} />}
-        {chart?.kind === "hourly" && <TimeSeriesChart siteId={siteId} data={chart.data} />}
-        {!chart && <p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>No data yet</p>}
-      </div>
+      <TrendAreaChart
+        points={points}
+        pageviewTotal={pageviews}
+        uniquesTotal={uniques}
+        metaRight={
+          <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.6875rem", color: theme.color.textFaint }}>
+            <span>Granularity: {granularity}</span>
+            <span>•</span>
+            <span style={{ color: theme.color.text, fontWeight: theme.font.weight.medium }}>{rangeLabel}</span>
+          </div>
+        }
+      />
     </div>
   );
+}
+
+/** Maps each drill depth to labeled, linked trend points (ticks stay SSR-safe short strings). */
+function toTrendPoints(chart: Exclude<Chart, null>, siteId: string): TrendPoint[] {
+  const href = (period: string) => `/?siteId=${encodeURIComponent(siteId)}&month=${encodeURIComponent(period)}`;
+  if (chart.kind === "monthly") {
+    return chart.data.map((d) => {
+      const [y, m] = d.month.split("-").map(Number);
+      return {
+        key: d.month,
+        label: formatMonthLabel(d.month),
+        tick: `${SHORT_MONTHS[m - 1]} ${y}`,
+        pageviews: d.pageviews,
+        uniques: d.uniques,
+        href: href(d.month),
+      };
+    });
+  }
+  if (chart.kind === "daily") {
+    return chart.data.map((d) => {
+      const [, m, day] = d.day.split("-").map(Number);
+      return {
+        key: d.day,
+        label: formatDayLabel(d.day),
+        tick: `${SHORT_MONTHS[m - 1]} ${day}`,
+        pageviews: d.pageviews,
+        uniques: d.uniques,
+        href: href(d.day),
+      };
+    });
+  }
+  return chart.data.map((d) => {
+    // d.hour is a real ISO timestamp ("2026-08-08T11:00:00.000Z"); the UTC
+    // fallback label/tick only shows until TrendAreaChart swaps in the
+    // viewer's local rendering from tickIso after mount.
+    const [day, time] = d.hour.split("T");
+    const hourNum = time.slice(0, 2);
+    return {
+      key: d.hour,
+      label: `${formatDayLabel(day)}, ${hourNum}:00 UTC`,
+      tick: `${hourNum}:00`,
+      tickIso: d.hour,
+      pageviews: d.pageviews,
+      uniques: d.uniques,
+      href: href(d.hour.slice(0, 13)),
+    };
+  });
 }

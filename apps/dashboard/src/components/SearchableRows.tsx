@@ -20,9 +20,14 @@ import { theme } from "@/lib/theme";
 export function SearchableRows({
   rows,
   initialVisibleCount,
+  placeholder = "Search…",
+  maxHeight,
 }: {
   rows: Array<{ key: string; node: ReactNode }>;
   initialVisibleCount: number;
+  placeholder?: string;
+  /** When set, the row list scrolls inside this height (the search box stays pinned above it). */
+  maxHeight?: string;
 }) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -33,28 +38,38 @@ export function SearchableRows({
 
   return (
     <div>
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search…"
-        style={{
-          display: "block",
-          width: "100%",
-          boxSizing: "border-box",
-          border: `1px solid ${theme.color.fieldBorder}`,
-          borderRadius: theme.radius.small,
-          padding: "5px 8px",
-          fontSize: "0.8rem",
-          fontFamily: "inherit",
-          marginBottom: "0.4rem",
-        }}
-      />
-      {visible.length === 0 ? (
-        <p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>No matches</p>
-      ) : (
-        visible.map((r) => <span key={r.key}>{r.node}</span>)
-      )}
+      <div style={{ position: "relative", marginBottom: "0.4rem" }}>
+        <i
+          className="fa-solid fa-magnifying-glass"
+          aria-hidden
+          style={{ position: "absolute", left: "0.625rem", top: "50%", transform: "translateY(-50%)", color: theme.color.textFaint, fontSize: "0.625rem" }}
+        />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={placeholder}
+          style={{
+            display: "block",
+            width: "100%",
+            boxSizing: "border-box",
+            background: theme.color.bg,
+            border: `1px solid ${theme.color.fieldBorder}`,
+            borderRadius: theme.radius.small,
+            padding: "5px 8px 5px 1.75rem",
+            fontSize: "0.6875rem",
+            fontFamily: "inherit",
+            color: theme.color.text,
+          }}
+        />
+      </div>
+      <div style={maxHeight ? { maxHeight, overflowY: "auto", paddingRight: "0.25rem" } : undefined}>
+        {visible.length === 0 ? (
+          <p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>No matches</p>
+        ) : (
+          visible.map((r) => <span key={r.key}>{r.node}</span>)
+        )}
+      </div>
       {hiddenCount > 0 && (
         <button
           type="button"

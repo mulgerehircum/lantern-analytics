@@ -10,6 +10,20 @@ export function formatMonthRangeLabel(month: string): string {
   return `${start} - ${SHORT_MONTHS[monthNum - 1]} ${lastDay}, ${year}`;
 }
 
+/** "2026-09" -> "Sep 1 - Sep 30, 2026" (compact form for the chart header). */
+export function formatMonthRangeShort(month: string): string {
+  const [year, monthNum] = month.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, monthNum, 0)).getUTCDate();
+  return `${SHORT_MONTHS[monthNum - 1]} 1 - ${SHORT_MONTHS[monthNum - 1]} ${lastDay}, ${year}`;
+}
+
+/** "Monthly" at all-time, "Hourly" on a day/hour, "Daily" on a month. */
+export function headerGranularityLabel(selectedPeriod: string | undefined, isDay: boolean, isHour: boolean): string {
+  if (!selectedPeriod) return "Monthly";
+  if (isHour || isDay) return "Hourly";
+  return "Daily";
+}
+
 /** "2026-09-15" -> "Sep 15, 2026" */
 export function formatDayRangeLabel(day: string): string {
   const [year, monthNum, dayNum] = day.split("-").map(Number);

@@ -36,19 +36,21 @@ export function ExportCsvButton({
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: "0.35rem",
+          gap: "0.375rem",
           height: 32,
-          padding: "0 0.75rem",
+          boxSizing: "border-box",
+          padding: "0 0.875rem",
           background: theme.color.brand,
           color: theme.color.onBrand,
           border: "none",
-          borderRadius: theme.radius.small,
+          borderRadius: theme.radius.control,
           fontSize: "0.75rem",
           fontWeight: theme.font.weight.medium,
           cursor: "pointer",
+          whiteSpace: "nowrap",
         }}
       >
-        <span aria-hidden>↓</span>
+        <i className="fa-solid fa-download" style={{ fontSize: "0.625rem" }} />
         <span>Export CSV</span>
       </button>
     );
@@ -62,7 +64,7 @@ export function ExportCsvButton({
         background: "none",
         border: "none",
         padding: 0,
-        fontSize: "0.72rem",
+        fontSize: "11px",
         fontWeight: theme.font.weight.medium,
         color: theme.color.brand,
         cursor: "pointer",

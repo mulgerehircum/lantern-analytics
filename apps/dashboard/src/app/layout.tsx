@@ -65,6 +65,33 @@ const globalStyles = `
     --color-card-bg: oklch(0.22 0.015 110);
     --color-on-brand: oklch(1 0 0);
   }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--color-underline); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-text-faint); }
+  /* Realtime ping dot (header live pill, sidebar project pill) - plain-CSS
+     stand-in for Tailwind's animate-ping, which this app doesn't ship. */
+  .lantern-ping { position: relative; }
+  .lantern-ping::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: var(--color-brand);
+    opacity: 0.75;
+    animation: lantern-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  @keyframes lantern-ping {
+    75%, 100% { transform: scale(2); opacity: 0; }
+  }
+  .lantern-chip { transition: background 0.15s, color 0.15s; }
+  .lantern-chip:hover { background: var(--color-brand-tint-bg); color: var(--color-brand-tint-text); }
+  .lantern-menu-item { transition: background 0.12s; }
+  .lantern-menu-item:hover { background: var(--color-brand-tint-bg); }
   .lantern-hamburger { display: none; }
   /* Column counts live here, not inline, specifically so the mobile
      override below can actually take effect - an inline gridTemplateColumns
@@ -72,8 +99,20 @@ const globalStyles = `
   .lantern-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
   .lantern-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
   .lantern-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .lantern-grid-8-4 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+  .lantern-grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; }
+  @media (max-width: 1024px) {
+    .lantern-grid-4 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .lantern-grid-4 {
+      grid-template-columns: 1fr;
+    }
+  }
   @media (max-width: 768px) {
-    .lantern-grid-4, .lantern-grid-3, .lantern-grid-2 {
+    .lantern-grid-3, .lantern-grid-2, .lantern-grid-8-4, .lantern-grid-1-2 {
       grid-template-columns: 1fr;
     }
     /* Header bar: search + Live View collapse away so Export CSV and the
@@ -150,7 +189,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
         <style>{globalStyles}</style>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

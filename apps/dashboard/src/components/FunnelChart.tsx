@@ -6,10 +6,8 @@ function stepLabel(step: FunnelStepResult["step"]): string {
 }
 
 /**
- * Horizontal bar per step - percentage widths are safe here (unlike
- * TrendCharts.tsx's bars, which sit inside an unsized <Link> column and need
- * pixel heights instead) since each row is a normal block-level div with a
- * real width to resolve against.
+ * Horizontal bar per step — percentage widths are safe here since each row
+ * is a normal block-level div with a real width to resolve against.
  */
 export function FunnelChart({ results }: { results: FunnelStepResult[] }) {
   if (results.length === 0) {

@@ -9,7 +9,7 @@ export interface DashboardSummary {
   referrers: Array<{ referrer: string; count: number }>;
   countries: Array<{ country: string; count: number }>;
   devices: Array<{ device: string; count: number }>;
-  timeSeries: Array<{ hour: string; pageviews: number }>;
+  timeSeries: Array<{ hour: string; pageviews: number; uniques: number }>;
   /** Custom-event totals per event name, e.g. { name: "contact_click", count: 3 }. */
   customEvents: Array<{ name: string; count: number }>;
   /** Flattened per-name, per-dimension rows, e.g. contact_click · platform · email. */
@@ -113,7 +113,7 @@ export function summarizeRollups(rollups: HourlyRollupItem[]): DashboardSummary 
   // and "#" was never meant to be user-facing.
   const timeSeries = [...rollups]
     .sort((a, b) => a.SK.localeCompare(b.SK))
-    .map((r) => ({ hour: `${r.SK.replace("AGG#", "").replace("#", "T")}:00:00.000Z`, pageviews: r.pageviews }));
+    .map((r) => ({ hour: `${r.SK.replace("AGG#", "").replace("#", "T")}:00:00.000Z`, pageviews: r.pageviews, uniques: r.uniques }));
 
   const { customEvents, customEventBreakdown } = summarizeCustomEvents(rollups);
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 
 /** Must match Sidebar.tsx's <aside> width - hiding the drawer means offsetting it fully off-screen. */
-const SIDEBAR_WIDTH = 250;
+const SIDEBAR_WIDTH = 256;
 
 /**
  * Wraps the already-rendered <Sidebar> output (pre-rendered JSX crossing the

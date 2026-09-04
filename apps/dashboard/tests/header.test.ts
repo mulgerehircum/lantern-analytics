@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   formatMonthRangeLabel,
+  formatMonthRangeShort,
   formatDayRangeLabel,
   formatHourRangeLabel,
   formatHeaderRangeLabel,
+  headerGranularityLabel,
   prevNextPeriod,
   buildOverviewCsv,
 } from "../src/lib/header";
@@ -19,6 +21,25 @@ describe("formatMonthRangeLabel", () => {
 
   it("never contains en/em dashes", () => {
     expect(formatMonthRangeLabel("2026-09")).not.toMatch(/[–—]/);
+  });
+});
+
+describe("formatMonthRangeShort", () => {
+  it("formats a month as a compact hyphen range", () => {
+    expect(formatMonthRangeShort("2026-09")).toBe("Sep 1 - Sep 30, 2026");
+  });
+
+  it("never contains en/em dashes", () => {
+    expect(formatMonthRangeShort("2026-09")).not.toMatch(/[–—]/);
+  });
+});
+
+describe("headerGranularityLabel", () => {
+  it("labels each drill depth", () => {
+    expect(headerGranularityLabel(undefined, false, false)).toBe("Monthly");
+    expect(headerGranularityLabel("2026-09", false, false)).toBe("Daily");
+    expect(headerGranularityLabel("2026-09-15", true, false)).toBe("Hourly");
+    expect(headerGranularityLabel("2026-09-15T14", false, true)).toBe("Hourly");
   });
 });
 
