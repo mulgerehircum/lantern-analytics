@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { theme, card } from "@/lib/theme";
 import { LocalDateTime } from "./LocalDateTime";
+import { CountryLabel } from "./CountryLabel";
 import { formatCustomEventLabel } from "@/lib/interaction-timeline";
 
 export interface EventOccurrenceRow {
@@ -45,7 +46,7 @@ export function EventOccurrenceList({ rows, totalCount }: { rows: EventOccurrenc
                   <LocalDateTime iso={row.timestampIso} />
                 </td>
                 <td style={{ padding: "0.5rem 0.6rem" }}>{formatCustomEventLabel(row.name, row.metadata)}</td>
-                <td style={{ padding: "0.5rem 0.6rem" }}>{row.country ?? "-"}</td>
+                <td style={{ padding: "0.5rem 0.6rem" }}>{row.country ? <CountryLabel code={row.country} /> : "-"}</td>
                 <td style={{ padding: "0.5rem 0.6rem" }}>{row.device ?? "-"}</td>
                 <td style={{ padding: "0.5rem 0 0.5rem 0.6rem" }}>
                   {row.sessionHref ? (

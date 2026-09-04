@@ -15,6 +15,7 @@ import { ChartCard } from "@/components/ChartCard";
 import type { Chart } from "@/components/ChartCard";
 import { HeaderBar } from "@/components/HeaderBar";
 import { DevicesCard, CustomEventTiles } from "@/components/BreakdownCards";
+import { CountryLabel } from "@/components/CountryLabel";
 import { buildOverviewCsv, formatHeaderRangeLabel } from "@/lib/header";
 import { DataTableCard } from "@/components/DataTableCard";
 import type { DataTableRow } from "@/components/DataTableCard";
@@ -450,17 +451,5 @@ function InsightsBox({ insights }: { insights: Insight[] }) {
         ))}
       </div>
     </div>
-  );
-}
-
-/** Country flag from FlagCDN, keyed by ISO 3166-1 alpha-2 (lowercase). */
-function CountryLabel({ code }: { code: string }) {
-  if (!code || code.length !== 2) return <>{code || "(empty)"}</>;
-  const flag = `https://flagcdn.com/w20/${code.toLowerCase()}.png`;
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-      <img src={flag} alt={`${code} flag`} width={16} height={12} loading="lazy" style={{ borderRadius: 2 }} />
-      {code}
-    </span>
   );
 }

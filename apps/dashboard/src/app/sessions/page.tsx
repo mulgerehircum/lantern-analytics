@@ -6,6 +6,7 @@ import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { theme, card } from "@/lib/theme";
 import { fieldStyle } from "@/components/ProjectSelector";
 import { AppShell } from "@/components/AppShell";
+import { CountryLabel } from "@/components/CountryLabel";
 import { LocalDateTime } from "@/components/LocalDateTime";
 import { formatDuration } from "@/lib/format";
 import { filterSessions, hasActiveSessionFilter } from "@/lib/session-filters";
@@ -216,7 +217,7 @@ function SessionsTable({
                   {s.path || "-"}
                 </td>
                 <td style={{ padding: "0.55rem 0.6rem" }}>{s.referrer || "direct"}</td>
-                <td style={{ padding: "0.55rem 0.6rem" }}>{s.country ?? "-"}</td>
+                <td style={{ padding: "0.55rem 0.6rem" }}>{s.country ? <CountryLabel code={s.country} /> : "-"}</td>
                 <td style={{ padding: "0.55rem 0.6rem" }}>{s.device ?? "-"}</td>
                 <td style={{ padding: "0.55rem 0.6rem", textTransform: "capitalize" }}>{s.variant ?? "-"}</td>
               </tr>
