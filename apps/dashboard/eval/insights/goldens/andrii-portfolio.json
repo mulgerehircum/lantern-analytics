@@ -1,17 +1,17 @@
 [
   {
-    "observation": "Total pageviews dropped by 24.4 percent between history halves, falling from 279 down to 211.",
-    "action": "Review recent promotional channels and repository links to identify what caused the traffic reduction.",
+    "observation": "Overall pageviews decreased by 24.4 percent between the two history halves, alongside an 18.7 percent drop in unique visitors.",
+    "action": "Review recent traffic acquisition sources to identify which referral channels experienced the largest declines.",
     "category": "ACQUISITION"
   },
   {
-    "observation": "The session bounce rate sits at 94 percent while average session duration is 580 seconds across 343 sessions.",
-    "action": "Improve internal navigation and add secondary links on the landing page to encourage visitors to explore beyond the initial view.",
+    "observation": "Sessions recorded a high single-pageview rate of 94 percent while maintaining an average duration of 580 seconds.",
+    "action": "A/B test additional interactive components on the single landing page to encourage deeper multi-page navigation.",
     "category": "CONTENT"
   },
   {
-    "observation": "The card variant view click-through rate stands at 1.4 percent with 12 combined clicks against 838 impressions.",
-    "action": "Redesign project card layouts and calls to action to improve visitor engagement with the live project links and modals.",
+    "observation": "The card variant view experiment exposure count grew by 235.2 percent while yielding a total click-through rate of 1.4 percent across 12 clicks.",
+    "action": "Redesign or reword the project card links and iframe expansion triggers to improve conversion from exposure to engagement.",
     "category": "CONTENT"
   }
 ]

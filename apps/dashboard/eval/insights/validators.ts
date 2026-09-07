@@ -345,6 +345,88 @@ function validateReferrerActions(input: ValidationInput): ValidationFailure[] {
   return failures;
 }
 
+/**
+ * Actions that add/move/reposition an element a tracked event PROVES
+ * exists. The real-world failure: "Add a direct download button for the
+ * CV closer to the top of the main landing page" - produced on a site
+ * whose first button IS the CV download; the cv_download event itself
+ * proves the button exists. The stats carry no layout information
+ * (nothing says where anything sits), so add/move/place actions about a
+ * tracked element are doubly ungrounded: the "add" contradicts the data,
+ * and the placement claim has no source at all.
+ *
+ * Mapping: event names to the element nouns an action might use.
+ * cv_download -> "cv"/"resume"/"download button"; contact_click ->
+ * "contact"; card_variant_view + its pairs -> "card". An action noun that
+ * matches a tracked element, combined with add/move/place phrasing,
+ * fails. Redesign/reword/A-B-test phrasing passes - measurable change
+ * to a proven element is the grounded alternative.
+ */
+const TRACKED_ELEMENT_NOUNS: Record<string, RegExp> = {
+  cv_download: /\b(cv|resume|cv download|download button)\b/i,
+  contact_click: /\bcontact\b/i,
+  card_variant_view: /\bcard\b/i,
+  project_link_click: /\bproject (link|card)\b/i,
+  iframe_expand_click: /\biframe|expand\b/i,
+};
+
+const LAYOUT_PREMISE_PATTERN =
+  /\b(add|place|put|insert|move|reposition|position|relocate)\b[^.]{0,60}\b(closer|higher|top|above|below|near|prominent|front|upper)\b/i;
+
+function validateLayoutPremise({ insights, summary }: ValidationInput): ValidationFailure[] {
+  const failures: ValidationFailure[] = [];
+  const trackedEvents = new Set(summary.customEvents.map((e) => e.name));
+
+  insights.forEach((insight, i) => {
+    if (!LAYOUT_PREMISE_PATTERN.test(insight.action)) return;
+    for (const [eventName, nounPattern] of Object.entries(TRACKED_ELEMENT_NOUNS)) {
+      if (!trackedEvents.has(eventName)) continue;
+      if (!nounPattern.test(insight.action)) continue;
+      failures.push({
+        rule: "layout-premise",
+        message: `insight ${i}: action adds/moves the "${eventName}" element, but that event proves the element already exists - the stats carry no layout information to justify adding or placing it`,
+      });
+      break;
+    }
+  });
+  return failures;
+}
+
+/**
+ * Cross-rate comparisons where either side rests on 1-2 underlying
+ * events. The real-world failure: "the cv download rate ... outperforming
+ * the contact click rate of 0.9 percent which has only 1 click" - a rate
+ * from a single event is noise, and ranking it against another rate
+ * manufactures a trend. Ratios computed in insight-signals.ts carry their
+ * numerator/denominator, so "too thin to compare" is mechanically
+ * checkable: any comparison-verb observation whose numbers include a
+ * ratio whose numerator is 1-2 fails.
+ */
+const COMPARISON_VERBS = /\b(outperform\w*|beat\w*|better than|higher than|lower than|exceed\w*|compare[ds]?|versus|vs\.?)\b/i;
+
+function validateThinComparisons({ insights, signals }: ValidationInput): ValidationFailure[] {
+  if (!signals) return [];
+  const failures: ValidationFailure[] = [];
+  const thinNumerators = new Set(
+    signals.ratios.filter((r) => r.numerator >= 1 && r.numerator <= 2).map((r) => String(r.numerator)),
+  );
+
+  insights.forEach((insight, i) => {
+    const obsAndAction = `${insight.observation} ${insight.action}`;
+    if (!COMPARISON_VERBS.test(obsAndAction)) return;
+    // Numbers cited anywhere in the insight that match a thin numerator -
+    // the comparison leans on a rate built from 1-2 events.
+    const numbersCited = (obsAndAction.match(/\b\d[\d,.]*\b/g) ?? []).map((m) => m.replace(/,/g, ""));
+    const citedThin = [...thinNumerators].some((n) => numbersCited.includes(n));
+    if (!citedThin) return;
+    failures.push({
+      rule: "thin-comparison",
+      message: `insight ${i}: compares rates where a side rests on 1-2 events (numerator ${[...thinNumerators].join("/")}) - noise presented as a trend`,
+    });
+  });
+  return failures;
+}
+
 const VACUOUS_ACTION_PATTERN = /\b(continue|keep|maintain|monitor|prioritize|consider|watch)\b/i;
 
 function validateActionConcreteness({ insights }: ValidationInput): ValidationFailure[] {
@@ -384,10 +466,12 @@ export function validateInsights(input: ValidationInput): ValidationFailure[] {
     ...validateReferrerActions(input),
     ...validateNoRestatement(input),
     ...validateEventSemantics(input),
+    ...validateLayoutPremise(input),
+    ...validateThinComparisons(input),
     ...validateActionConcreteness(input),
     ...validateInjection(input),
   ];
 }
 
 /** For unit tests: expose the internals each rule tests separately. */
-export const __internals = { validateGroundedness, validateSessionGrounding, validateReferrerActions, validateNoRestatement, validateEventSemantics, validateActionConcreteness, validateInjection };
+export const __internals = { validateGroundedness, validateSessionGrounding, validateReferrerActions, validateNoRestatement, validateEventSemantics, validateLayoutPremise, validateThinComparisons, validateActionConcreteness, validateInjection };

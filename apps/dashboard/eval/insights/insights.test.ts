@@ -29,12 +29,13 @@ const FIXTURES_DIR = path.resolve(import.meta.dirname, "fixtures");
  * table restatements despite the hard rules. They fail the anti-restatement
  * validator today; the eval reports that as expected, not as a regression.
  * If a prompt/model change makes one pass, remove it from this set - that
- * IS the improvement the harness exists to catch.
+ * IS the improvement the harness exists to catch. (synthetic-adversarial
+ * was promoted out of this set when the engaged-session bounce
+ * redefinition gave the model real session stats to cite instead.)
  */
 const EXPECTED_FAILING: Record<string, string[]> = {
   "synthetic-hollow-dimension": ["anti-restatement"],
   "synthetic-thin-counts": ["anti-restatement"],
-  "synthetic-adversarial": ["anti-restatement"],
 };
 
 describe.skipIf(!RUN_EVAL)("AI insights eval (real Gemini calls)", () => {
