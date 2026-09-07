@@ -1,0 +1,96 @@
+{
+  "siteId": "synthetic-hollow-dimension",
+  "dumpedAt": "2026-09-05T00:00:00.000Z",
+  "source": "synthetic",
+  "items": {
+    "rollups": [
+      {
+        "SK": "AGG#2026-08-20#10",
+        "pageviews": 40,
+        "uniques": 30,
+        "topPages": {
+          "/": 25,
+          "/cv": 15
+        },
+        "referrers": {
+          "direct": 28,
+          "github.com": 12
+        },
+        "countries": {
+          "UA": 20,
+          "US": 12,
+          "DE": 8
+        },
+        "devices": {
+          "desktop": 34,
+          "mobile": 6
+        },
+        "customEvents": {
+          "cv_download": 4
+        },
+        "eventDimensions": {
+          "cv_download": {
+            "filename": {
+              "CV.pdf": 4
+            }
+          }
+        }
+      },
+      {
+        "SK": "AGG#2026-08-20#11",
+        "pageviews": 35,
+        "uniques": 25,
+        "topPages": {
+          "/": 20,
+          "/cv": 15
+        },
+        "referrers": {
+          "direct": 25,
+          "github.com": 10
+        },
+        "countries": {
+          "UA": 18,
+          "US": 10,
+          "DE": 7
+        },
+        "devices": {
+          "desktop": 30,
+          "mobile": 5
+        },
+        "customEvents": {
+          "cv_download": 3
+        },
+        "eventDimensions": {
+          "cv_download": {
+            "filename": {
+              "CV.pdf": 3
+            }
+          }
+        }
+      }
+    ],
+    "liveEvents": [],
+    "sessions": [
+      {
+        "SK": "SESSION#2026-08-20T10:05:00.000Z#synthetic",
+        "sessionId": "s1",
+        "startedAt": "2026-08-20T10:05:00.000Z",
+        "durationMs": 180000,
+        "pageCount": 3,
+        "storageRef": "synthetic",
+        "path": "/",
+        "device": "desktop"
+      },
+      {
+        "SK": "SESSION#2026-08-20T11:10:00.000Z#synthetic",
+        "sessionId": "s2",
+        "startedAt": "2026-08-20T11:10:00.000Z",
+        "durationMs": 45000,
+        "pageCount": 1,
+        "storageRef": "synthetic",
+        "path": "/cv",
+        "device": "desktop"
+      }
+    ]
+  }
+}

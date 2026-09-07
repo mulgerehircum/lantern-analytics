@@ -4,3 +4,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Eval harness local response cache (re-runs must not burn Gemini quota)
+eval/insights/.cache/

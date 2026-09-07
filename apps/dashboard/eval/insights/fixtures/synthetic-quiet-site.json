@@ -1,0 +1,29 @@
+{
+  "siteId": "synthetic-quiet-site",
+  "dumpedAt": "2026-09-05T00:00:00.000Z",
+  "source": "synthetic",
+  "items": {
+    "rollups": [
+      {
+        "SK": "AGG#2026-09-01#08",
+        "pageviews": 0,
+        "uniques": 0,
+        "topPages": {},
+        "referrers": {},
+        "countries": {},
+        "devices": {}
+      },
+      {
+        "SK": "AGG#2026-09-02#08",
+        "pageviews": 0,
+        "uniques": 0,
+        "topPages": {},
+        "referrers": {},
+        "countries": {},
+        "devices": {}
+      }
+    ],
+    "liveEvents": [],
+    "sessions": []
+  }
+}

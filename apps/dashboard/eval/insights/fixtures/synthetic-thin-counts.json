@@ -1,0 +1,75 @@
+{
+  "siteId": "synthetic-thin-counts",
+  "dumpedAt": "2026-09-05T00:00:00.000Z",
+  "source": "synthetic",
+  "items": {
+    "rollups": [
+      {
+        "SK": "AGG#2026-08-25#09",
+        "pageviews": 120,
+        "uniques": 80,
+        "topPages": {
+          "/": 70,
+          "/projects": 50
+        },
+        "referrers": {
+          "direct": 60,
+          "x.com": 40,
+          "reddit.com": 20
+        },
+        "countries": {
+          "US": 50,
+          "UA": 40,
+          "PL": 30
+        },
+        "devices": {
+          "desktop": 90,
+          "mobile": 30
+        },
+        "customEvents": {
+          "contact_click": 1,
+          "mystery_event": 2
+        }
+      },
+      {
+        "SK": "AGG#2026-08-25#10",
+        "pageviews": 110,
+        "uniques": 70,
+        "topPages": {
+          "/": 60,
+          "/projects": 50
+        },
+        "referrers": {
+          "direct": 55,
+          "x.com": 35,
+          "reddit.com": 20
+        },
+        "countries": {
+          "US": 45,
+          "UA": 35,
+          "PL": 30
+        },
+        "devices": {
+          "desktop": 85,
+          "mobile": 25
+        },
+        "customEvents": {
+          "contact_click": 1
+        }
+      }
+    ],
+    "liveEvents": [],
+    "sessions": [
+      {
+        "SK": "SESSION#2026-08-25T09:30:00.000Z#synthetic",
+        "sessionId": "s1",
+        "startedAt": "2026-08-25T09:30:00.000Z",
+        "durationMs": 300000,
+        "pageCount": 4,
+        "storageRef": "synthetic",
+        "path": "/",
+        "device": "desktop"
+      }
+    ]
+  }
+}

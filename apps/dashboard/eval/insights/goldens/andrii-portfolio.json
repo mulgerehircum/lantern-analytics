@@ -1,0 +1,17 @@
+[
+  {
+    "observation": "Total pageviews dropped by 24.4 percent between history halves, falling from 279 down to 211.",
+    "action": "Review recent promotional channels and repository links to identify what caused the traffic reduction.",
+    "category": "ACQUISITION"
+  },
+  {
+    "observation": "The session bounce rate sits at 94 percent while average session duration is 580 seconds across 343 sessions.",
+    "action": "Improve internal navigation and add secondary links on the landing page to encourage visitors to explore beyond the initial view.",
+    "category": "CONTENT"
+  },
+  {
+    "observation": "The card variant view click-through rate stands at 1.4 percent with 12 combined clicks against 838 impressions.",
+    "action": "Redesign project card layouts and calls to action to improve visitor engagement with the live project links and modals.",
+    "category": "CONTENT"
+  }
+]

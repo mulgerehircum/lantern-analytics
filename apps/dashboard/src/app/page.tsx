@@ -3,7 +3,8 @@ import { aggregateEvents } from "@/lib/aggregate";
 import { getHourlyRollups, getLiveRawEvents, getAllRawEvents, currentHourSK } from "@/lib/dynamodb";
 import { getSessionRecordings } from "@/lib/sessions";
 import { getInsights } from "@/lib/ai-query";
-import type { Insight } from "@/lib/ai-query";
+import type { Insight, InsightsContext } from "@/lib/ai-query";
+import { buildInsightSignals, splitComparisonWindows } from "@/lib/insight-signals";
 import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend, summarizeSessions, computePeriodComparison } from "@/lib/summarize";
 import type { DashboardSummary, MonthlyTrendPoint, DailyTrendPoint, PeriodComparison } from "@/lib/summarize";
 import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filter";
@@ -188,12 +189,46 @@ export default async function DashboardPage({
   // summarizeSessions's comment), not scoped to selectedPeriod/filters like
   // summary is, but it's still real signal worth folding in regardless of
   // which period is being viewed.
+  // Derived-comparison context for the insights call (see lib/insight-signals.ts
+  // for why the model needs it). Built from data already fetched above - no
+  // extra I/O. Three windows:
+  // - unfiltered + all-time: trailing-30d vs prior-30d when history is long
+  //   enough, else recent-half vs older-half of what exists (young sites have
+  //   no full prior-30d window - see splitComparisonWindows)
+  // - unfiltered + selectedPeriod: this period vs the previousRollups fetch
+  //   already made for the header comparison
+  // - filtered: ratios only - the "previous period" isn't filter-scoped, so
+  //   deltas would be apples-to-oranges; buildInsightSignals handles that
+  //   by emitting no delta fields when previous is undefined.
+  // Passed to getInsights via closure (not as a cached-fn argument) so it
+  // stays out of the cache key, same discipline as summary itself.
+  const insightsContext: InsightsContext = {
+    eventNames: summary.customEvents.map((e) => e.name),
+    referrers: summary.referrers.map((r) => r.referrer),
+  };
+  if (filtered) {
+    insightsContext.signals = buildInsightSignals(summary, undefined, null);
+  } else if (selectedPeriod) {
+    insightsContext.signals = buildInsightSignals(summary, summarizeRollups(previousRollups), "period-over-period");
+  } else {
+    const recent = splitComparisonWindows(rollupsWithLive, 30);
+    insightsContext.signals = buildInsightSignals(
+      summarizeRollups(recent.current),
+      summarizeRollups(recent.previous),
+      recent.basis ?? undefined,
+    );
+  }
+
   let insights: Insight[] | null = null;
   if (summary.totalPageviews > 0) {
     try {
       const getCachedInsights = unstable_cache(
-        async () => getInsights(summary, sessionsSummary),
-        ["ai-insights", siteId, selectedPeriod ?? "all-time", String(filtered)],
+        async () => getInsights(summary, sessionsSummary, insightsContext),
+        // "v3": signals gained adaptive comparison windows + two hard rules
+        // (session labeling, cross-metric when deltas are null); bumping
+        // the key part invalidates older entries on deploy rather than
+        // serving hour-old output until each key's TTL lapses.
+        ["ai-insights-v3", siteId, selectedPeriod ?? "all-time", String(filtered)],
         { revalidate: 3600 },
       );
       insights = (await getCachedInsights()).insights;

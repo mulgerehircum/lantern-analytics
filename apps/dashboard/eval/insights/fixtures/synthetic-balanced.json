@@ -1,0 +1,188 @@
+{
+  "siteId": "synthetic-balanced",
+  "dumpedAt": "2026-09-05T00:00:00.000Z",
+  "source": "synthetic",
+  "items": {
+    "rollups": [
+      {
+        "SK": "AGG#2026-07-15#10",
+        "pageviews": 60,
+        "uniques": 40,
+        "topPages": {
+          "/": 35,
+          "/projects": 25
+        },
+        "referrers": {
+          "github.com": 30,
+          "direct": 25,
+          "x.com": 5
+        },
+        "countries": {
+          "UA": 25,
+          "US": 20,
+          "DE": 15
+        },
+        "devices": {
+          "desktop": 55,
+          "mobile": 5
+        },
+        "customEvents": {
+          "card_variant_view": 30,
+          "project_link_click": 2,
+          "contact_click": 1
+        }
+      },
+      {
+        "SK": "AGG#2026-07-15#11",
+        "pageviews": 65,
+        "uniques": 42,
+        "topPages": {
+          "/": 38,
+          "/projects": 27
+        },
+        "referrers": {
+          "github.com": 33,
+          "direct": 27,
+          "x.com": 5
+        },
+        "countries": {
+          "UA": 27,
+          "US": 22,
+          "DE": 16
+        },
+        "devices": {
+          "desktop": 60,
+          "mobile": 5
+        },
+        "customEvents": {
+          "card_variant_view": 32,
+          "project_link_click": 3,
+          "contact_click": 1
+        }
+      },
+      {
+        "SK": "AGG#2026-08-15#10",
+        "pageviews": 240,
+        "uniques": 190,
+        "topPages": {
+          "/": 150,
+          "/projects": 90
+        },
+        "referrers": {
+          "news.ycombinator.com": 120,
+          "github.com": 70,
+          "direct": 50
+        },
+        "countries": {
+          "US": 110,
+          "UA": 60,
+          "DE": 40,
+          "JP": 30
+        },
+        "devices": {
+          "desktop": 200,
+          "mobile": 40
+        },
+        "customEvents": {
+          "card_variant_view": 95,
+          "project_link_click": 11,
+          "iframe_expand_click": 6,
+          "contact_click": 4
+        }
+      },
+      {
+        "SK": "AGG#2026-08-15#11",
+        "pageviews": 210,
+        "uniques": 165,
+        "topPages": {
+          "/": 130,
+          "/projects": 80
+        },
+        "referrers": {
+          "news.ycombinator.com": 100,
+          "github.com": 60,
+          "direct": 50
+        },
+        "countries": {
+          "US": 100,
+          "UA": 50,
+          "DE": 35,
+          "JP": 25
+        },
+        "devices": {
+          "desktop": 175,
+          "mobile": 35
+        },
+        "customEvents": {
+          "card_variant_view": 80,
+          "project_link_click": 9,
+          "iframe_expand_click": 5,
+          "contact_click": 3
+        }
+      }
+    ],
+    "liveEvents": [],
+    "sessions": [
+      {
+        "SK": "SESSION#2026-08-15T10:10:00.000Z#synthetic",
+        "sessionId": "s1",
+        "startedAt": "2026-08-15T10:10:00.000Z",
+        "durationMs": 420000,
+        "pageCount": 5,
+        "storageRef": "synthetic",
+        "path": "/",
+        "device": "desktop"
+      },
+      {
+        "SK": "SESSION#2026-08-15T10:40:00.000Z#synthetic",
+        "sessionId": "s2",
+        "startedAt": "2026-08-15T10:40:00.000Z",
+        "durationMs": 90000,
+        "pageCount": 2,
+        "storageRef": "synthetic",
+        "path": "/projects",
+        "device": "mobile"
+      },
+      {
+        "SK": "SESSION#2026-08-15T11:05:00.000Z#synthetic",
+        "sessionId": "s3",
+        "startedAt": "2026-08-15T11:05:00.000Z",
+        "durationMs": 60000,
+        "pageCount": 1,
+        "storageRef": "synthetic",
+        "path": "/",
+        "device": "mobile"
+      },
+      {
+        "SK": "SESSION#2026-08-15T11:30:00.000Z#synthetic",
+        "sessionId": "s4",
+        "startedAt": "2026-08-15T11:30:00.000Z",
+        "durationMs": 360000,
+        "pageCount": 4,
+        "storageRef": "synthetic",
+        "path": "/projects",
+        "device": "desktop"
+      },
+      {
+        "SK": "SESSION#2026-08-15T11:50:00.000Z#synthetic",
+        "sessionId": "s5",
+        "startedAt": "2026-08-15T11:50:00.000Z",
+        "durationMs": 30000,
+        "pageCount": 1,
+        "storageRef": "synthetic",
+        "path": "/",
+        "device": "mobile"
+      },
+      {
+        "SK": "SESSION#2026-08-15T11:55:00.000Z#synthetic",
+        "sessionId": "s6",
+        "startedAt": "2026-08-15T11:55:00.000Z",
+        "durationMs": 240000,
+        "pageCount": 3,
+        "storageRef": "synthetic",
+        "path": "/",
+        "device": "desktop"
+      }
+    ]
+  }
+}

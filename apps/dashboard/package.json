@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval:insights": "node scripts/run-insights-eval.mjs",
+    "eval:dump-fixture": "node scripts/dump-insights-fixture.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.677.0",

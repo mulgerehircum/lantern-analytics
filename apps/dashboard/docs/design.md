@@ -136,3 +136,51 @@ its system prompt). Disabling thinking outright (`thinkingConfig:
 { thinkingBudget: 0 }`) was tried to remove that variability at the root;
 this model rejects budget 0 with a 400, so a generous fixed budget is the
 fallback instead.
+
+## Insights eval harness (eval/insights/)
+
+The three real-world failure modes that motivated the harness — table
+restatement ("GitHub is the dominant channel, 292 of 488"), impressions
+read as engagement ("1289 section views and 1080 card variant views show
+strong engagement"), and vacuous actions ("continue sharing links") —
+were all reproducible against a specific prompt+model. Two upstream
+fixes landed with it:
+
+- `lib/event-semantics.ts` — a flat static registry (name → kind/pairing/
+  note) telling the prompt what each known event name MEANS.
+  `card_variant_view` is an experiment impression; it is a CTR
+  denominator, never engagement. Unknown names fall back to a generic
+  "owner-chosen tracking action" line rather than invented meaning.
+- `lib/insight-signals.ts` — precomputed deltas (period-over-period, or
+  adaptive windows for the all-time view: trailing-30d vs prior-30d when
+  history is long enough, recent-half vs older-half when it isn't — a
+  site younger than ~60 days has no full mirrored prior window, and a
+  fixed prior-30d split left such sites with null-only deltas, which is
+  precisely what pushed the model back to table restatement) and
+  paired-event ratios (experiment CTR, contact/cv rate), injected into
+  the prompt as a "Derived signals" block. The prompt's hard rules:
+  never restate a table, impressions are not engagement, never re-do
+  arithmetic — cite the precomputed numbers verbatim — and label numbers
+  with the metric they come from (a device count is not "sessions").
+
+The harness itself: `eval/insights/` holds fixtures (raw DynamoDB items
+dumped via `scripts/dump-insights-fixture.mjs` — the real portfolio
+snapshot plus synthetic cases for hollow dimensions, thin counts,
+adversarial strings, quiet sites, and balanced data), deterministic
+validators (structure / groundedness / session-grounding /
+anti-restatement / event semantics / action concreteness / injection),
+a locally cached + throttled runner (`GEMINI_EVAL=1 npm run
+eval:insights`, responses cached under `.cache/` keyed on prompt content
+so re-runs burn no quota), and committed golden snapshots (`goldens/`,
+refresh with `GOLDEN_UPDATE=1`) that show exactly what a prompt tweak
+changed. Session-grounding exists because a live run labeled 487
+pageview-scoped desktop views as "487 sessions" (real sessionCount:
+343) — the number existed in the inputs, so global groundedness passed
+while the metric label was simply wrong.
+
+Fixtures verified failing today (gemini-3.5-flash-lite falls back to
+table restatement on thin data) are listed in the eval's
+`EXPECTED_FAILING` map: their failures are reported as KNOWN, and if a
+future prompt/model change makes one pass, the eval flags it as an
+improvement to promote. The real-portfolio fixture — the case that
+originally produced the three bad insights — passes.
