@@ -93,3 +93,68 @@ export function formatHourLabel(hour: string): string {
   const [day, hourNum] = hour.split("T");
   return `${formatDayLabel(day)}, ${hourNum}:00 UTC`;
 }
+
+/**
+ * Human label for the same-span baseline, e.g. "August 1-7" when viewing
+ * in-progress "2026-09" on Sep 7, or "Sep 6, 0:00-13:00" when viewing the
+ * current day at 14:00. null for complete periods and hours (they use the
+ * plain "previous period" wording).
+ */
+export function sameSpanLabel(period: string, isDay: boolean, isHour: boolean, now: Date = new Date()): string | null {
+  if (isHour || !isPeriodInProgress(period, isDay, isHour, now)) return null;
+  if (isDay) {
+    const elapsedHours = now.getUTCHours();
+    return `${formatDayLabel(shiftDay(period, -1))}, 0:00-${elapsedHours}:00 UTC`;
+  }
+  const elapsedDays = now.getUTCDate();
+  const [year, monthNum] = shiftMonth(period, -1).split("-").map(Number);
+  return `${MONTH_NAMES[monthNum - 1]} 1-${elapsedDays}, ${year}`;
+}
+
+/**
+ * True when `period` is still in progress at `now` - the current month
+ * (any day), the current day (any hour), or the current hour (any minute).
+ * A period in progress has no final totals yet, so comparisons against
+ * its previous period must truncate the previous one to the same elapsed
+ * progress (see rollupWithinElapsedSpan below and its page.tsx call site).
+ */
+export function isPeriodInProgress(period: string, isDay: boolean, isHour: boolean, now: Date = new Date()): boolean {
+  if (isHour) return period === currentHour(now);
+  if (isDay) return period === currentDay(now);
+  return period === currentMonth(now);
+}
+
+/**
+ * True when a rollup hour (from the PREVIOUS period's rollups) belongs to
+ * the same elapsed span as an in-progress viewed period - the same-span
+ * baseline. Drops the "future" tail: viewing month 2026-09 on Sep 7, the
+ * previous month's Aug 8-31 rollups must not count toward the baseline
+ * (Sep 1-7 compares against Aug 1-7 only); viewing the current day at
+ * 14:00, the previous day's hours 15-23 don't count either. Complete
+ * periods and hour views keep everything (full-vs-full; hourly rollups
+ * have no sub-hour resolution to truncate to).
+ */
+export function rollupWithinElapsedSpan(
+  sk: string,
+  viewedPeriod: string,
+  isDay: boolean,
+  isHour: boolean,
+  now: Date = new Date(),
+): boolean {
+  if (isHour || !isPeriodInProgress(viewedPeriod, isDay, isHour, now)) return true;
+  // SK shape: "AGG#2026-08-15#14" -> [_, "2026-08-15", "14"].
+  const parts = sk.split("#");
+  const dayPart = parts[1] ?? "";
+  const hourPart = parts[2] ?? "";
+  if (!isDay) {
+    // Month view: keep the previous month's days up to the current
+    // month's elapsed day number.
+    const elapsedDays = now.getUTCDate();
+    return Number(dayPart.slice(8, 10)) <= elapsedDays;
+  }
+  // Day view: keep the previous day's hours up to the current day's
+  // elapsed hour number (the current hour counts as elapsed - the live
+  // pseudo-rollup for it is already included in the current side).
+  const elapsedHours = now.getUTCHours();
+  return Number(hourPart) <= elapsedHours;
+}

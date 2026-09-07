@@ -13,6 +13,9 @@ import {
   currentHour,
   shiftHour,
   formatHourLabel,
+  isPeriodInProgress,
+  rollupWithinElapsedSpan,
+  sameSpanLabel,
 } from "../src/lib/months";
 
 describe("currentMonth", () => {
@@ -186,5 +189,71 @@ describe("shiftHour", () => {
 describe("formatHourLabel", () => {
   it("formats an hour string as a UTC-labeled human-readable string", () => {
     expect(formatHourLabel("2026-08-15T14")).toBe("August 15, 2026, 14:00 UTC");
+  });
+});
+
+describe("isPeriodInProgress", () => {
+  const now = new Date("2026-09-07T14:30:00.000Z");
+
+  it("is true for the current month, day, and hour", () => {
+    expect(isPeriodInProgress("2026-09", false, false, now)).toBe(true);
+    expect(isPeriodInProgress("2026-09-07", true, false, now)).toBe(true);
+    expect(isPeriodInProgress("2026-09-07T14", false, true, now)).toBe(true);
+  });
+
+  it("is false for completed periods and other months/days/hours", () => {
+    expect(isPeriodInProgress("2026-08", false, false, now)).toBe(false);
+    expect(isPeriodInProgress("2026-09-06", true, false, now)).toBe(false);
+    expect(isPeriodInProgress("2026-09-07T13", false, true, now)).toBe(false);
+  });
+});
+
+describe("rollupWithinElapsedSpan (same-span baseline)", () => {
+  const now = new Date("2026-09-07T14:30:00.000Z"); // Sep 7, 14:30 UTC
+
+  it("month in progress: keeps previous-month days 1-7, drops 8-31", () => {
+    const keep = rollupWithinElapsedSpan("AGG#2026-08-07#23", "2026-09", false, false, now);
+    const drop = rollupWithinElapsedSpan("AGG#2026-08-08#00", "2026-09", false, false, now);
+    expect(keep).toBe(true);
+    expect(drop).toBe(false);
+  });
+
+  it("day in progress: keeps previous-day hours 0-14, drops 15-23", () => {
+    const keep = rollupWithinElapsedSpan("AGG#2026-09-06#14", "2026-09-07", true, false, now);
+    const drop = rollupWithinElapsedSpan("AGG#2026-09-06#15", "2026-09-07", true, false, now);
+    expect(keep).toBe(true);
+    expect(drop).toBe(false);
+  });
+
+  it("keeps everything for completed periods (full-vs-full)", () => {
+    expect(rollupWithinElapsedSpan("AGG#2026-08-31#23", "2026-08", false, false, now)).toBe(true);
+    expect(rollupWithinElapsedSpan("AGG#2026-09-05#23", "2026-09-06", true, false, now)).toBe(true);
+  });
+
+  it("keeps everything for hour views (no sub-hour rollup resolution)", () => {
+    expect(rollupWithinElapsedSpan("AGG#2026-09-07T14#59", "2026-09-07T14", false, true, now)).toBe(true);
+  });
+});
+
+describe("sameSpanLabel", () => {
+  const now = new Date("2026-09-07T14:30:00.000Z");
+
+  it("labels the month baseline as the previous month's elapsed days", () => {
+    expect(sameSpanLabel("2026-09", false, false, now)).toBe("August 1-7, 2026");
+  });
+
+  it("labels the day baseline as the previous day's elapsed hours", () => {
+    expect(sameSpanLabel("2026-09-07", true, false, now)).toBe("September 6, 2026, 0:00-14:00 UTC");
+  });
+
+  it("is null for completed periods and hour views (plain 'previous period' wording)", () => {
+    expect(sameSpanLabel("2026-08", false, false, now)).toBeNull();
+    expect(sameSpanLabel("2026-09-06", true, false, now)).toBeNull();
+    expect(sameSpanLabel("2026-09-07T14", false, true, now)).toBeNull();
+  });
+
+  it("handles January (previous month in the prior year)", () => {
+    const jan = new Date("2027-01-07T14:30:00.000Z");
+    expect(sameSpanLabel("2027-01", false, false, jan)).toBe("December 1-7, 2026");
   });
 });

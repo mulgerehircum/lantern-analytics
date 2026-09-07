@@ -28,6 +28,7 @@ export function ChartCard({
   pageviewsDelta,
   uniquesDelta,
   previousPageviews,
+  previousPageviewsLabel,
   sessionsSummary,
   selectedPeriod,
   isDay,
@@ -41,6 +42,7 @@ export function ChartCard({
   pageviewsDelta?: number | null;
   uniquesDelta?: number | null;
   previousPageviews?: number;
+  previousPageviewsLabel?: string;
   sessionsSummary: SessionsSummary;
   selectedPeriod?: string;
   isDay: boolean;
@@ -72,6 +74,7 @@ export function ChartCard({
           pageviewsDelta={pageviewsDelta}
           uniquesDelta={uniquesDelta}
           previousPageviews={previousPageviews}
+          previousPageviewsLabel={previousPageviewsLabel}
           sessionsSummary={sessionsSummary}
         />
       </div>

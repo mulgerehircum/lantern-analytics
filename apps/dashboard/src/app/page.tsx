@@ -18,6 +18,7 @@ import { HeaderBar } from "@/components/HeaderBar";
 import { DevicesCard, CustomEventTiles } from "@/components/BreakdownCards";
 import { CountryLabel } from "@/components/CountryLabel";
 import { buildOverviewCsv, formatHeaderRangeLabel } from "@/lib/header";
+import { isPeriodInProgress, rollupWithinElapsedSpan, sameSpanLabel } from "@/lib/months";
 import { DataTableCard } from "@/components/DataTableCard";
 import type { DataTableRow } from "@/components/DataTableCard";
 import {
@@ -144,9 +145,29 @@ export default async function DashboardPage({
   }
   const filtered = hasActiveFilter(filters);
 
+  // Same-span baseline: a period still in progress (this month/day) has
+  // no final totals, so comparing it against the FULL previous period
+  // would read as a massive drop early in the period ("-72.8%" on Sep 7
+  // vs all of August). Truncate the previous period's rollups to the
+  // same elapsed progress: Sep 1-7 compares against Aug 1-7 only. Complete
+  // periods compare full-vs-full; an hour in progress keeps the full
+  // previous hour (hourly rollups have no sub-hour resolution to
+  // truncate to). See lib/months.ts for the pure helpers.
+  const periodInProgress = isPeriodInProgress(selectedPeriod ?? "", isDay, isHour);
+  const sameSpanPreviousRollups =
+    periodInProgress && !filtered
+      ? previousRollups.filter((r) => rollupWithinElapsedSpan(r.SK, selectedPeriod!, isDay, isHour))
+      : previousRollups;
+
   const comparison: PeriodComparison | undefined =
-    selectedPeriod && !filtered ? computePeriodComparison(summary, summarizeRollups(previousRollups)) : undefined;
-  const previousSummary = selectedPeriod && !filtered ? summarizeRollups(previousRollups) : null;
+    selectedPeriod && !filtered ? computePeriodComparison(summary, summarizeRollups(sameSpanPreviousRollups)) : undefined;
+  const previousSummary = selectedPeriod && !filtered ? summarizeRollups(sameSpanPreviousRollups) : null;
+  // "vs 41 Aug 1-7" (month in progress) / "vs 12 same hours of Sep 6"
+  // (day in progress) when the baseline is truncated, plain wording
+  // otherwise.
+  const spanLabel = selectedPeriod ? sameSpanLabel(selectedPeriod, isDay, isHour) : null;
+  const previousPageviewsLabel =
+    previousSummary && spanLabel ? `vs ${previousSummary.totalPageviews} ${spanLabel}` : undefined;
 
   // Exactly one chart per drill depth (root→monthly, month→daily,
   // day→hourly; hour is the finest granularity, no chart below it). When a
@@ -209,7 +230,10 @@ export default async function DashboardPage({
   if (filtered) {
     insightsContext.signals = buildInsightSignals(summary, undefined, null);
   } else if (selectedPeriod) {
-    insightsContext.signals = buildInsightSignals(summary, summarizeRollups(previousRollups), "period-over-period");
+    // Same-span baseline (see the comment above sameSpanPreviousRollups):
+    // the AI's period-over-period deltas must not compare an in-progress
+    // period against a full previous one either.
+    insightsContext.signals = buildInsightSignals(summary, summarizeRollups(sameSpanPreviousRollups), "period-over-period");
   } else {
     const recent = splitComparisonWindows(rollupsWithLive, 30);
     insightsContext.signals = buildInsightSignals(
@@ -308,6 +332,7 @@ export default async function DashboardPage({
         pageviewsDelta={comparison?.pageviewsDeltaPercent}
         uniquesDelta={comparison?.uniquesDeltaPercent}
         previousPageviews={previousSummary?.totalPageviews}
+        previousPageviewsLabel={previousPageviewsLabel}
         sessionsSummary={sessionsSummary}
         selectedPeriod={selectedPeriod}
         isDay={isDay}
