@@ -199,11 +199,28 @@ export interface SessionsSummary {
   sessionCount: number;
   avgDurationSeconds: number;
   avgPageCount: number;
-  /** Percentage (0-100) of sessions that viewed only 1 page. */
+  /**
+   * Percentage (0-100) of sessions that were NOT engaged. A session is
+   * engaged when it viewed >= 2 pages OR lasted >= 10s - the GA4
+   * "engaged session" rule, minus the conversion criterion (per-session
+   * conversions aren't tracked). The old single-pageview definition
+   * called every one-page reader a bounce, which is meaningless for a
+   * one-page site: a visitor who reads for 70s and leaves is not a
+   * bounce.
+   */
   bounceRatePercent: number;
+  /**
+   * Percentage (0-100) of sessions that viewed only 1 page - the old
+   * bounce definition, kept because it's still real signal: how rarely
+   * visitors click through to a second page.
+   */
+  singlePageviewPercent: number;
   longestDurationSeconds: number;
   topLandingPages: Array<{ path: string; count: number }>;
 }
+
+/** A session is engaged when it viewed >= 2 pages OR lasted this long. */
+export const SESSION_ENGAGED_DURATION_MS = 10_000;
 
 /**
  * Aggregate-only summary of session recordings - never per-session detail
@@ -224,6 +241,7 @@ export function summarizeSessions(sessions: SessionRecordingItem[]): SessionsSum
       avgDurationSeconds: 0,
       avgPageCount: 0,
       bounceRatePercent: 0,
+      singlePageviewPercent: 0,
       longestDurationSeconds: 0,
       topLandingPages: [],
     };
@@ -231,7 +249,8 @@ export function summarizeSessions(sessions: SessionRecordingItem[]): SessionsSum
 
   const totalDurationMs = sessions.reduce((sum, s) => sum + s.durationMs, 0);
   const totalPageCount = sessions.reduce((sum, s) => sum + s.pageCount, 0);
-  const bounces = sessions.filter((s) => s.pageCount <= 1).length;
+  const singlePageviews = sessions.filter((s) => s.pageCount <= 1).length;
+  const engaged = sessions.filter((s) => s.pageCount >= 2 || s.durationMs >= SESSION_ENGAGED_DURATION_MS).length;
   const longestDurationMs = Math.max(...sessions.map((s) => s.durationMs));
 
   const landingPageCounts: Record<string, number> = {};
@@ -248,7 +267,8 @@ export function summarizeSessions(sessions: SessionRecordingItem[]): SessionsSum
     sessionCount: sessions.length,
     avgDurationSeconds: Math.round(totalDurationMs / sessions.length / 1000),
     avgPageCount: Math.round((totalPageCount / sessions.length) * 10) / 10,
-    bounceRatePercent: Math.round((bounces / sessions.length) * 100),
+    bounceRatePercent: Math.round(((sessions.length - engaged) / sessions.length) * 100),
+    singlePageviewPercent: Math.round((singlePageviews / sessions.length) * 100),
     longestDurationSeconds: Math.round(longestDurationMs / 1000),
     topLandingPages,
   };

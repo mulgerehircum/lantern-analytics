@@ -31,6 +31,7 @@ function sessionsSummary(overrides: Partial<SessionsSummary> = {}): SessionsSumm
     avgDurationSeconds: 120,
     avgPageCount: 3.2,
     bounceRatePercent: 40,
+    singlePageviewPercent: 60,
     longestDurationSeconds: 900,
     topLandingPages: [{ path: "/", count: 20 }],
     ...overrides,
@@ -208,6 +209,119 @@ describe("validateReferrerActions (the partnerships.anav.dev failure)", () => {
   });
 });
 
+describe("validateLayoutPremise (the add-a-CV-button failure)", () => {
+  it("flags adding a CV download button when cv_download proves it exists", () => {
+    const bad = insight(
+      "The cv download rate reaches 4.3 percent with 5 downloads recorded against 115 pageviews.",
+      "Add a direct download button for the CV closer to the top of the main landing page to capture more recruiting interest.",
+      "CONTENT",
+    );
+    const failures = validateInsights({
+      ...baseInput,
+      summary: summary({ totalPageviews: 115, customEvents: [{ name: "cv_download", count: 5 }] }),
+      insights: [insight("x"), bad, insight("y")],
+    });
+    expect(failures.some((f) => f.rule === "layout-premise" && f.message.includes("cv_download"))).toBe(true);
+  });
+
+  it("flags moving a contact section when contact_click proves it exists", () => {
+    const bad = insight(
+      "The contact click rate is low at 0.9 percent.",
+      "Move the contact section higher on the landing page where more visitors will see it.",
+      "CONTENT",
+    );
+    const failures = validateInsights({
+      ...baseInput,
+      summary: summary({ customEvents: [{ name: "contact_click", count: 1 }] }),
+      insights: [insight("x"), insight("y"), bad],
+    });
+    expect(failures.some((f) => f.rule === "layout-premise" && f.message.includes("contact_click"))).toBe(true);
+  });
+
+  it("passes redesign/A-B-test actions on the same proven element", () => {
+    const good = insight(
+      "The cv download rate reaches 4.3 percent with 5 downloads recorded against 115 pageviews.",
+      "A/B test the CV button's wording and style to see which variant converts more visitors into downloads.",
+      "CONTENT",
+    );
+    const failures = validateInsights({
+      ...baseInput,
+      summary: summary({ totalPageviews: 115, customEvents: [{ name: "cv_download", count: 5 }] }),
+      insights: [good, insight("x"), insight("y")],
+    });
+    expect(failures.filter((f) => f.rule === "layout-premise")).toEqual([]);
+  });
+
+  it("passes add-actions for elements with no tracked event (nothing proves they exist)", () => {
+    const good = insight(
+      "Sessions average 544 seconds on a single page with a 95 percent single-pageview rate.",
+      "Add an internal anchor-links menu near the top of the page to help visitors navigate the long layout.",
+      "CONTENT",
+    );
+    const failures = validateInsights({ ...baseInput, insights: [insight("x"), good, insight("y")] });
+    expect(failures.filter((f) => f.rule === "layout-premise")).toEqual([]);
+  });
+});
+
+describe("validateThinComparisons (the 1-click outperforming failure)", () => {
+  it("flags a rate comparison whose losing side rests on 1 click", () => {
+    const bad = insight(
+      "The cv download rate reaches 4.3 percent with 5 downloads recorded against 115 pageviews, outperforming the contact click rate of 0.9 percent which has only 1 click.",
+      "Highlight the CV more since it converts better than the contact options.",
+      "CONTENT",
+    );
+    const failures = validateInsights({
+      ...baseInput,
+      summary: summary({ totalPageviews: 115, customEvents: [{ name: "cv_download", count: 5 }, { name: "contact_click", count: 1 }] }),
+      signals: signals({
+        ratios: [
+          { label: "cv_download rate (cv_download / pageviews)", numerator: 5, denominator: 115, percent: 4.3 },
+          { label: "contact_click rate (contact_click / pageviews)", numerator: 1, denominator: 115, percent: 0.9 },
+        ],
+      }),
+      insights: [insight("x"), bad, insight("y")],
+    });
+    expect(failures.some((f) => f.rule === "thin-comparison")).toBe(true);
+  });
+
+  it("passes comparisons between well-supported rates", () => {
+    const good = insight(
+      "The cv download rate of 4.3 percent exceeds the contact click rate of 2.6 percent, both measured against the same 115 pageviews.",
+      "Keep the CV prominent in the header since it converts reliably.",
+      "CONTENT",
+    );
+    const failures = validateInsights({
+      ...baseInput,
+      summary: summary({ totalPageviews: 115, customEvents: [{ name: "cv_download", count: 5 }, { name: "contact_click", count: 3 }] }),
+      signals: signals({
+        ratios: [
+          { label: "cv_download rate (cv_download / pageviews)", numerator: 5, denominator: 115, percent: 4.3 },
+          { label: "contact_click rate (contact_click / pageviews)", numerator: 3, denominator: 115, percent: 2.6 },
+        ],
+      }),
+      insights: [good, insight("x"), insight("y")],
+    });
+    expect(failures.filter((f) => f.rule === "thin-comparison")).toEqual([]);
+  });
+
+  it("passes well-supported observations that merely cite a thin ratio's number without comparing", () => {
+    const good = insight(
+      "The contact click rate is 0.9 percent (1 click in 115 pageviews) - too thin to draw conclusions from.",
+      "Watch the contact section over the next month before acting on it.",
+      "CONTENT",
+    );
+    const failures = validateInsights({
+      ...baseInput,
+      summary: summary({ totalPageviews: 115, customEvents: [{ name: "contact_click", count: 1 }] }),
+      signals: signals({
+        ratios: [{ label: "contact_click rate (contact_click / pageviews)", numerator: 1, denominator: 115, percent: 0.9 }],
+      }),
+      insights: [insight("x"), good, insight("y")],
+    });
+    expect(failures.filter((f) => f.rule === "thin-comparison")).toEqual([]);
+  });
+});
+
 describe("regression: the pasted live-output batch (2026-09, history-halves era)", () => {
   // A real gemini-3.5-flash-lite response to the andrii-portfolio fixture:
   // insights 1 and 3 are good (ratios cited verbatim from signals), insight
@@ -342,6 +456,79 @@ describe("regression: the second pasted live-output batch (history-halves output
     const rules = failures.map((f) => f.rule);
     expect(rules).toContain("session-grounding");
     expect(rules).toContain("referrer-actions");
+  });
+});
+
+describe("regression: the third pasted live-output batch (the CV-button failure)", () => {
+  // A real gemini-3.5-flash-lite response on live data: insights 1 and 3
+  // are fine, but insight 2 recommends "add a direct download button for
+  // the CV closer to the top of the main landing page" - on a site whose
+  // FIRST button is the CV download (cv_download proves the element
+  // exists), and it frames a 1-click rate as "outperforming" another.
+  const pasted: Insight[] = [
+    {
+      observation:
+        "Visitors show very low conversion interaction relative to exposure, with the card variant view experiment generating 454 impressions but only 8 total clicks for a 1.8 percent click-through rate.",
+      action: "Revise the project card call-to-action buttons to make them more prominent and encourage higher visitor engagement.",
+      category: "CONTENT",
+    },
+    {
+      observation:
+        "The cv download rate reaches 4.3 percent with 5 downloads recorded against 115 pageviews, outperforming the contact click rate of 0.9 percent which has only 1 click.",
+      action: "Add a direct download button for the CV closer to the top of the main landing page to capture more recruiting interest.",
+      category: "CONTENT",
+    },
+    {
+      observation:
+        "Session depth data shows a 95 percent single pageview rate alongside an average duration of 544 seconds, indicating that visitors spend significant time reading the single page without navigating further.",
+      action: "Break up the long single page layout into additional sub-pages or add internal anchor links to improve site navigation flow.",
+      category: "CONTENT",
+    },
+  ];
+  const input = {
+    summary: summary({
+      totalPageviews: 115,
+      customEvents: [
+        { name: "card_variant_view", count: 454 },
+        { name: "cv_download", count: 5 },
+        { name: "contact_click", count: 1 },
+        { name: "project_link_click", count: 8 },
+      ],
+    }),
+    sessionsSummary: sessionsSummary({
+      sessionCount: 380,
+      avgDurationSeconds: 544,
+      avgPageCount: 1.1,
+      bounceRatePercent: 23,
+      singlePageviewPercent: 95,
+    }),
+    signals: signals({
+      comparisonBasis: null,
+      pageviewsDeltaPercent: null,
+      uniquesDeltaPercent: null,
+      referrerDeltas: [],
+      countryDeltas: [],
+      deviceDeltas: [],
+      pageDeltas: [],
+      eventDeltas: [],
+      ratios: [
+        { label: "card_variant_view click-through rate (project_link_click + iframe_expand_click / card_variant_view)", numerator: 8, denominator: 454, percent: 1.8 },
+        { label: "cv_download rate (cv_download / pageviews)", numerator: 5, denominator: 115, percent: 4.3 },
+        { label: "contact_click rate (contact_click / pageviews)", numerator: 1, denominator: 115, percent: 0.9 },
+      ],
+    }),
+  };
+
+  it("insights 1 and 3 pass every rule", () => {
+    const failures = validateInsights({ ...input, insights: [pasted[0], pasted[2], insight("x")] });
+    expect(failures).toEqual([]);
+  });
+
+  it("insight 2 fails layout-premise AND thin-comparison", () => {
+    const failures = validateInsights({ ...input, insights: [insight("x"), pasted[1], insight("y")] });
+    const rules = failures.map((f) => f.rule);
+    expect(rules).toContain("layout-premise");
+    expect(rules).toContain("thin-comparison");
   });
 });
 

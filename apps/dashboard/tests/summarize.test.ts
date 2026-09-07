@@ -201,6 +201,7 @@ describe("summarizeSessions", () => {
       avgDurationSeconds: 0,
       avgPageCount: 0,
       bounceRatePercent: 0,
+      singlePageviewPercent: 0,
       longestDurationSeconds: 0,
       topLandingPages: [],
     });
@@ -216,14 +217,45 @@ describe("summarizeSessions", () => {
     expect(result.avgPageCount).toBe(3);
   });
 
-  it("computes bounce rate as the percentage of 1-page sessions", () => {
+  it("computes singlePageviewPercent as the percentage of 1-page sessions", () => {
     const result = summarizeSessions([
       session({ pageCount: 1 }),
       session({ pageCount: 1 }),
       session({ pageCount: 1 }),
       session({ pageCount: 5 }),
     ]);
-    expect(result.bounceRatePercent).toBe(75);
+    expect(result.singlePageviewPercent).toBe(75);
+  });
+
+  it("computes bounce as unengaged: 1 page AND under 10s (GA4 rule)", () => {
+    const result = summarizeSessions([
+      session({ pageCount: 1, durationMs: 5_000 }), // unengaged - bounces
+      session({ pageCount: 1, durationMs: 0 }), // unengaged - bounces
+      session({ pageCount: 1, durationMs: 70_000 }), // read for 70s - engaged, NOT a bounce
+      session({ pageCount: 3, durationMs: 2_000 }), // 2nd page - engaged, NOT a bounce
+    ]);
+    expect(result.bounceRatePercent).toBe(50);
+    expect(result.singlePageviewPercent).toBe(75); // 3 of 4 saw one page
+  });
+
+  it("treats exactly 10 seconds as engaged (boundary)", () => {
+    const result = summarizeSessions([
+      session({ pageCount: 1, durationMs: 9_999 }),
+      session({ pageCount: 1, durationMs: 10_000 }),
+    ]);
+    expect(result.bounceRatePercent).toBe(50);
+  });
+
+  it("separates the two rates on the real portfolio shape: readers who never click through", () => {
+    // The shape that motivated the split: most sessions are single-pageview
+    // but read for 10s+ - high reading depth, low actual bounce.
+    const readers = Array.from({ length: 24 }, () => session({ pageCount: 1, durationMs: 20_000 }));
+    const driveBys = Array.from({ length: 8 }, () => session({ pageCount: 1, durationMs: 2_000 }));
+    const clickers = Array.from({ length: 2 }, () => session({ pageCount: 2, durationMs: 30_000 }));
+    const result = summarizeSessions([...readers, ...driveBys, ...clickers]);
+    expect(result.sessionCount).toBe(34);
+    expect(result.singlePageviewPercent).toBe(94); // 32/34 saw one page
+    expect(result.bounceRatePercent).toBe(24); // only the 8 drive-bys bounced
   });
 
   it("reports the longest single session's duration", () => {

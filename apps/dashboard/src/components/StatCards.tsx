@@ -94,6 +94,7 @@ export function MetricRow({
   pageviewsDelta,
   uniquesDelta,
   previousPageviews,
+  previousPageviewsLabel,
   sessionsSummary,
 }: {
   pageviews: number;
@@ -101,6 +102,8 @@ export function MetricRow({
   pageviewsDelta?: number | null;
   uniquesDelta?: number | null;
   previousPageviews?: number;
+  /** Overrides the "vs N previous period" label, e.g. for same-span baselines ("vs 41 Aug 1-7"). */
+  previousPageviewsLabel?: string;
   sessionsSummary: SessionsSummary;
 }) {
   const conversionRate = pageviews > 0 ? ((uniques / pageviews) * 100).toFixed(1) : "0.0";
@@ -113,7 +116,10 @@ export function MetricRow({
         label="Pageviews"
         value={String(pageviews)}
         delta={pageviewsDelta}
-        context={previousPageviews !== undefined ? `vs ${previousPageviews} previous period` : undefined}
+        context={
+          previousPageviewsLabel ??
+          (previousPageviews !== undefined ? `vs ${previousPageviews} previous period` : undefined)
+        }
         tooltip="Total page requests"
       />
       <StatCard
@@ -135,8 +141,8 @@ export function MetricRow({
         label="Bounce Rate"
         value={bounceLabel}
         invertTrend
-        context="Optimal for 1-page portfolios"
-        tooltip="Share of recorded sessions that viewed a single page"
+        context={`${sessionsSummary.singlePageviewPercent.toFixed(0)}% single-pageview sessions`}
+        tooltip="Share of recorded sessions that neither viewed a second page nor stayed 10 seconds"
         divided
       />
     </div>

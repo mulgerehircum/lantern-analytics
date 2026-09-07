@@ -26,6 +26,7 @@ function sessionsSummary(overrides: Partial<SessionsSummary> = {}): SessionsSumm
     avgDurationSeconds: 0,
     avgPageCount: 0,
     bounceRatePercent: 0,
+    singlePageviewPercent: 0,
     longestDurationSeconds: 0,
     topLandingPages: [],
     ...overrides,
@@ -145,7 +146,13 @@ describe("INSIGHTS_SYSTEM_PROMPT", () => {
   it("explains sessionsSummary's fields and tells the model to ignore it when absent/empty", () => {
     expect(INSIGHTS_SYSTEM_PROMPT).toContain("sessionsSummary");
     expect(INSIGHTS_SYSTEM_PROMPT).toContain("bounceRatePercent");
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("singlePageviewPercent");
     expect(INSIGHTS_SYSTEM_PROMPT.toLowerCase()).toContain("ignore sessionssummary entirely");
+  });
+
+  it("documents that bounceRate and singlePageviewPercent are different metrics", () => {
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("Two related but DIFFERENT rates, never conflate them");
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("nor stayed 10 seconds");
   });
 
   it("warns that sessionsSummary is not scoped to the same period as the rest of the stats", () => {
@@ -170,6 +177,17 @@ describe("INSIGHTS_SYSTEM_PROMPT", () => {
     expect(INSIGHTS_SYSTEM_PROMPT).toContain("A referrer hostname is not an entity");
     expect(INSIGHTS_SYSTEM_PROMPT).toContain("NEVER recommend contacting, partnering with, or reaching out to");
     expect(INSIGHTS_SYSTEM_PROMPT).toContain("executable by the site owner alone");
+  });
+
+  it("forbids layout claims about elements a tracked event proves exist", () => {
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("The stats carry NO information about the site's layout");
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("whose FIRST button is the CV download");
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("reword it, redesign it, A/B test variants");
+  });
+
+  it("forbids comparing rates that rest on 1-2 events", () => {
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("do not rank, compare, or frame one rate against another");
+    expect(INSIGHTS_SYSTEM_PROMPT).toContain("too thin to compare");
   });
 });
 
