@@ -19,6 +19,12 @@ export interface HourlyRollup {
   topPages: Record<string, number>;
   referrers: Record<string, number>;
   countries: Record<string, number>;
+  /** Uniques (isNewVisit pageviews) per country — the per-country slice the
+   * pageview `countries` map can't provide. Same exactness argument as
+   * `uniques`: summing across rollups is exact, unlike the old
+   * distinct-visitorHash approach. Rollups written before this field
+   * existed simply lack it; readers treat it as empty. */
+  countryUniques: Record<string, number>;
   devices: Record<string, number>;
   /** Custom-event count by event name, e.g. { "contact_click": 3 }. */
   customEvents: Record<string, number>;
@@ -63,6 +69,7 @@ export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
   const topPages: Record<string, number> = {};
   const referrers: Record<string, number> = {};
   const countries: Record<string, number> = {};
+  const countryUniques: Record<string, number> = {};
   const devices: Record<string, number> = {};
   const customEvents: Record<string, number> = {};
   const eventDimensions: Record<string, Record<string, Record<string, number>>> = {};
@@ -84,7 +91,10 @@ export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
     increment(referrers, event.referrer || "direct");
     increment(countries, event.country);
     increment(devices, event.device);
-    if (event.isNewVisit) uniques += 1;
+    if (event.isNewVisit) {
+      uniques += 1;
+      increment(countryUniques, event.country);
+    }
   }
 
   return {
@@ -93,6 +103,7 @@ export function aggregateEvents(events: RawEventItem[]): HourlyRollup {
     topPages,
     referrers,
     countries,
+    countryUniques,
     devices,
     customEvents,
     eventDimensions,

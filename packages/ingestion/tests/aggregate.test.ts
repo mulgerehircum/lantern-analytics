@@ -21,6 +21,7 @@ describe("aggregateEvents", () => {
       topPages: {},
       referrers: {},
       countries: {},
+      countryUniques: {},
       devices: {},
       customEvents: {},
       eventDimensions: {},
@@ -48,6 +49,26 @@ describe("aggregateEvents", () => {
     const result = aggregateEvents([event({ visitorHash: "c", isNewVisit: false })]);
     expect(result.pageviews).toBe(1);
     expect(result.uniques).toBe(0);
+    expect(result.countryUniques).toEqual({});
+  });
+
+  it("splits uniques per country, and only for isNewVisit pageviews", () => {
+    const result = aggregateEvents([
+      event({ country: "UA", isNewVisit: true }),
+      event({ country: "UA", isNewVisit: false }), // repeat from UA - pageview, not unique
+      event({ country: "UA", isNewVisit: true }),
+      event({ country: "MD", isNewVisit: true }),
+      event({ country: "MD", isNewVisit: true }),
+      event({ country: "MD", isNewVisit: false }),
+    ]);
+    expect(result.uniques).toBe(4);
+    expect(result.countries).toEqual({ UA: 3, MD: 3 });
+    expect(result.countryUniques).toEqual({ UA: 2, MD: 2 });
+  });
+
+  it("counts unknown-country new visits in countryUniques under the 'unknown' bucket", () => {
+    const result = aggregateEvents([event({ country: "unknown", isNewVisit: true })]);
+    expect(result.countryUniques).toEqual({ unknown: 1 });
   });
 
   it("buckets an empty referrer as direct, not as an empty-string key", () => {

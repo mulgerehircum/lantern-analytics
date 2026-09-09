@@ -35,6 +35,8 @@ export interface HourlyRollupItem {
   topPages: Record<string, number>;
   referrers: Record<string, number>;
   countries: Record<string, number>;
+  /** Optional - rollups written before countryUniques existed lack it. */
+  countryUniques?: Record<string, number>;
   devices: Record<string, number>;
   /** Optional - rollups written before custom events existed lack these. */
   customEvents?: Record<string, number>;

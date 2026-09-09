@@ -21,6 +21,7 @@ describe("aggregateEvents (dashboard copy, mirrors ingestion's)", () => {
       topPages: {},
       referrers: {},
       countries: {},
+      countryUniques: {},
       devices: {},
       customEvents: {},
       eventDimensions: {},
@@ -39,6 +40,17 @@ describe("aggregateEvents (dashboard copy, mirrors ingestion's)", () => {
 
   it("buckets an empty referrer as direct", () => {
     expect(aggregateEvents([event({ referrer: "" })]).referrers).toEqual({ direct: 1 });
+  });
+
+  it("splits uniques per country, matching the ingestion-side original", () => {
+    const result = aggregateEvents([
+      event({ country: "UA", isNewVisit: true }),
+      event({ country: "UA", isNewVisit: false }),
+      event({ country: "MD", isNewVisit: true }),
+    ]);
+    expect(result.uniques).toBe(2);
+    expect(result.countries).toEqual({ UA: 2, MD: 1 });
+    expect(result.countryUniques).toEqual({ UA: 1, MD: 1 });
   });
 
   it("counts custom events by name, keeping them out of pageview/uniques totals", () => {

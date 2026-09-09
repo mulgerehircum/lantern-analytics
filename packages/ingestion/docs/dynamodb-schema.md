@@ -57,6 +57,7 @@ SK: AGG#2026-08-08#14
   topPages: { "/pricing": 88, "/": 140, "/docs": 45 },
   referrers: { "google.com": 120, "direct": 90 },
   countries: { "MD": 40, "PL": 60 },
+  countryUniques: { "MD": 28, "PL": 41 },
   devices: { "desktop": 250, "mobile": 92 },
   customEvents: { "contact_click": 3, "section_view": 10 },
   eventDimensions: {
@@ -72,7 +73,11 @@ only. `uniques` is a count of pageviews with `isNewVisit: true`, not distinct
 `visitorHash` — a stateless, no-hashing heuristic (fresh navigation + non-same-site
 referrer, see packages/tracker/src/visit.ts) chosen so summing `uniques` across
 rollups is always exact, and so repeat/reload bot traffic naturally contributes 0
-rather than 1. `eventDimensions` is keyed by event name → metadata key → string value.
+rather than 1. `countryUniques` applies the same isNewVisit rule per country —
+summing it across rollups is exact for the same reason. Rollups written before
+`countryUniques` or `eventDimensions`/`customEvents` existed simply lack those
+fields; the dashboard treats them as absent. `eventDimensions` is keyed by
+event name → metadata key → string value.
 Known tradeoff: high-cardinality string metadata (e.g. per-visit IDs) would
 bloat rollup items, so string metadata is assumed to be low-cardinality.
 Rollups written before custom events existed simply lack the last two fields;
