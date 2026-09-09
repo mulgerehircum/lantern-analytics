@@ -18,13 +18,29 @@ export interface EventOccurrenceRow {
  * Individual custom-event firings (not the aggregate counts shown in the
  * tables above) - the reverse-lookup direction of lib/session-correlation.ts:
  * from one occurrence, straight to which session it happened in and when.
+ * `title`/`subtitle` let the Overview's "Latest events" feed reuse this
+ * with newest-first wording, while the Events page keeps its
+ * clicks-prioritized label.
  */
-export function EventOccurrenceList({ rows, totalCount }: { rows: EventOccurrenceRow[]; totalCount: number }) {
+export function EventOccurrenceList({
+  rows,
+  totalCount,
+  title = "Recent occurrences",
+  subtitle,
+}: {
+  rows: EventOccurrenceRow[];
+  totalCount: number;
+  title?: string;
+  subtitle?: string;
+}) {
+  const effectiveSubtitle =
+    subtitle ??
+    `Showing ${rows.length} of ${totalCount} occurrences (clicks prioritized) · trailing ~30 days`;
   return (
     <div style={card}>
-      <div style={{ fontWeight: theme.font.weight.semibold, fontSize: "0.85rem", marginBottom: "0.3rem" }}>Recent occurrences</div>
+      <div style={{ fontWeight: theme.font.weight.semibold, fontSize: "0.85rem", marginBottom: "0.3rem" }}>{title}</div>
       <div style={{ fontSize: "0.72rem", color: theme.color.textMuted, marginBottom: "0.7rem" }}>
-        Showing {rows.length} of {totalCount} occurrences (clicks prioritized) · trailing ~30 days
+        {effectiveSubtitle}
       </div>
       {rows.length === 0 ? (
         <p style={{ color: theme.color.textFaint, fontSize: "0.82rem", margin: 0 }}>No custom events in the last ~30 days.</p>

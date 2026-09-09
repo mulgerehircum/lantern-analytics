@@ -6,9 +6,17 @@ import { getInsights } from "@/lib/ai-query";
 import type { Insight, InsightsContext } from "@/lib/ai-query";
 import { buildInsightSignals, splitComparisonWindows } from "@/lib/insight-signals";
 import { summarizeRollups, summarizeMonthlyTrend, summarizeDailyTrend, summarizeSessions, computePeriodComparison } from "@/lib/summarize";
-import type { DashboardSummary, MonthlyTrendPoint, DailyTrendPoint, PeriodComparison } from "@/lib/summarize";
+import type { DashboardSummary, MonthlyTrendPoint, DailyTrendPoint, PeriodComparison, SessionsSummary } from "@/lib/summarize";
 import { buildFilteredRollups, hasActiveFilter, parseFilters } from "@/lib/filter";
+import { buildEventView, selectLatestEvents } from "@/lib/event-view";
+import type { EventView } from "@/lib/event-view";
+import { findSessionForEvent } from "@/lib/session-correlation";
+import { EventOccurrenceList } from "@/components/EventOccurrenceList";
+import type { EventOccurrenceRow } from "@/components/EventOccurrenceList";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
+
+/** Rows shown in the Overview's "Latest events" card. */
+const LATEST_EVENTS_LIMIT = 10;
 import { theme, card } from "@/lib/theme";
 import { AppShell } from "@/components/AppShell";
 import { AiQueryBox } from "@/components/AiQueryBox";
@@ -126,9 +134,37 @@ export default async function DashboardPage({
   let summary: DashboardSummary;
   let monthlyTrend: MonthlyTrendPoint[] | null = null;
   let dailyTrend: DailyTrendPoint[] | null = null;
+  // An eventName filter matches only custom events (pageviews carry no
+  // `name`), so the filtered summary is pageview-empty BY CONSTRUCTION -
+  // the pageview-centric cards/tables below would render a wall of
+  // honest-but-useless zeros. Instead the event view (lib/event-view.ts)
+  // reuses the same raw events to build an event-centric breakdown:
+  // occurrences, unique actors, daily trend, and who/where/metadata rows.
+  const eventFiltered = Boolean(filters.eventName);
+  let eventView: EventView | null = null;
+  // Latest-events feed: raw events are needed in EVERY view now (not just
+  // the filtered one), fetched via getAllRawEvents's own shared cache so
+  // the filtered branch and this feed hit one DynamoDB query per minute.
+  const rawEvents = await getAllRawEvents(siteId);
+  // Newest-first feed of meaningful visitor ACTIONS - passive impressions
+  // (section_view scroll-pasts, card_variant_view experiment exposure) and
+  // heatmap pings excluded (see lib/event-view.ts's
+  // isPassiveImpressionEvent), diversified round-robin across visitors.
+  const latestEvents = selectLatestEvents(rawEvents, LATEST_EVENTS_LIMIT);
+  const latestEventRows: EventOccurrenceRow[] = latestEvents.rows.map((e) => {
+    const match = findSessionForEvent(e, sessions);
+    return {
+      timestampIso: new Date(e.timestampMs).toISOString(),
+      name: e.name!,
+      metadata: e.metadata,
+      country: e.country,
+      device: e.device,
+      sessionHref: match ? `/sessions/${match.session.sessionId}?siteId=${encodeURIComponent(siteId)}&t=${match.offsetMs}` : undefined,
+    };
+  });
   if (hasActiveFilter(filters)) {
-    const rawEvents = await getAllRawEvents(siteId);
     summary = summarizeRollups(buildFilteredRollups(rawEvents, filters));
+    if (eventFiltered) eventView = buildEventView(rawEvents, filters);
   } else {
     summary = summarizeRollups(rollupsWithLive);
     if (!selectedPeriod) {
@@ -325,6 +361,18 @@ export default async function DashboardPage({
         </p>
       )}
 
+      {eventView ? (
+        <EventViewSection
+          siteId={siteId}
+          eventName={filters.eventName!}
+          eventDetail={filters.eventKey && filters.eventValue ? `${filters.eventKey}: ${filters.eventValue}` : undefined}
+          view={eventView}
+          customEventTotal={summary.customEvents.find((e) => e.name === filters.eventName)?.count ?? 0}
+          sessionsSummary={sessionsSummary}
+        />
+      ) : (
+        <>
+
       <ChartCard
         siteId={siteId}
         pageviews={summary.totalPageviews}
@@ -379,8 +427,18 @@ export default async function DashboardPage({
       </div>
 
       <div className="lantern-grid-1-2" style={{ marginTop: "1rem" }}>
-        <DevicesCard devices={summary.devices} periodLabel={formatHeaderRangeLabel(selectedPeriod, isDay, isHour)} />
-        <CustomEventTiles events={summary.customEvents} exportFilename={`${siteId}-custom-events.csv`} />
+        <DevicesCard
+          devices={summary.devices}
+          periodLabel={formatHeaderRangeLabel(selectedPeriod, isDay, isHour)}
+          siteId={siteId}
+          activeDevice={filters.device}
+        />
+        <CustomEventTiles
+          events={summary.customEvents}
+          exportFilename={`${siteId}-custom-events.csv`}
+          siteId={siteId}
+          activeEventName={filters.eventName && !filters.eventKey ? filters.eventName : undefined}
+        />
       </div>
 
       <div style={{ marginTop: "1rem" }}>
@@ -393,6 +451,19 @@ export default async function DashboardPage({
           exportFilename={`${siteId}-custom-event-details.csv`}
         />
       </div>
+
+      {latestEventRows.length > 0 && (
+        <div style={{ marginTop: "1rem" }}>
+          <EventOccurrenceList
+            rows={latestEventRows}
+            totalCount={latestEvents.total}
+            title="Latest events"
+            subtitle={`Newest ${latestEventRows.length} of ${latestEvents.total} visitor actions (passive impressions and heatmap pings excluded, one row per visitor) · trailing ~30 days`}
+          />
+        </div>
+      )}
+        </>
+      )}
     </AppShell>
   );
 }
@@ -511,5 +582,173 @@ function InsightsBox({ insights }: { insights: Insight[] }) {
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * The eventName/eventKey+eventValue filtered view. Replaces the
+ * pageview-centric Overview entirely: an event filter is a custom-events
+ * view by construction (pageviews carry no `name`), so Pageviews/Uniques
+ * cards and the page tables would all read 0 while the actual signal
+ * hides in a tile. Server-rendered like everything else here - the daily
+ * bars are simple divs, no chart client JS needed at this granularity.
+ */
+function EventViewSection({
+  siteId,
+  eventName,
+  eventDetail,
+  view,
+  customEventTotal,
+  sessionsSummary,
+}: {
+  siteId: string;
+  eventName: string;
+  /** "variant: iframe" when the filter is an eventKey+eventValue detail filter. */
+  eventDetail?: string;
+  view: EventView;
+  /** All occurrences of this event name (not just the detail-filtered slice) - the share denominator. */
+  customEventTotal: number;
+  sessionsSummary: SessionsSummary;
+}) {
+  const share = customEventTotal > 0 ? (view.count / customEventTotal) * 100 : 0;
+  const maxDaily = view.daily.length ? Math.max(...view.daily.map((d) => d.count)) : 0;
+  const clearHref = `/?siteId=${encodeURIComponent(siteId)}`;
+
+  const toRows = (rows: EventView["countries"]): DataTableRow[] =>
+    rows.map((r) => ({ key: r.key, count: r.count }));
+
+  return (
+    <>
+      <div style={{ ...card, marginBottom: "1.25rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+          <i className="fa-solid fa-bolt" style={{ color: theme.color.textMuted, fontSize: "0.75rem" }} />
+          <div style={{ fontWeight: theme.font.weight.bold, fontSize: "0.875rem", fontFamily: theme.font.mono }}>
+            {eventName}
+          </div>
+          {eventDetail && (
+            <span
+              style={{
+                fontSize: "0.6875rem",
+                color: theme.color.brandTintTextStrong,
+                background: theme.color.brandTintBg,
+                border: `1px solid ${theme.color.border}`,
+                padding: "0.125rem 0.5rem",
+                borderRadius: theme.radius.pill,
+                fontFamily: theme.font.mono,
+              }}
+            >
+              {eventDetail}
+            </span>
+          )}
+        </div>
+        <div className="lantern-grid-4">
+          <div>
+            <span style={{ fontSize: "0.75rem", fontWeight: theme.font.weight.medium, color: theme.color.textMuted }}>Occurrences</span>
+            <div style={{ fontSize: "1.875rem", fontWeight: theme.font.weight.extrabold, letterSpacing: "-0.02em", lineHeight: 1.2, fontFamily: theme.font.mono }}>
+              {view.count}
+            </div>
+            {eventDetail && customEventTotal > 0 && (
+              <span style={{ fontSize: "0.6875rem", color: theme.color.textFaint }}>
+                {share.toFixed(1)}% of all {eventName}
+              </span>
+            )}
+          </div>
+          <div style={{ borderLeft: `1px solid ${theme.color.border}`, paddingLeft: "1rem" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: theme.font.weight.medium, color: theme.color.textMuted }}>Unique Visitors</span>
+            <div style={{ fontSize: "1.875rem", fontWeight: theme.font.weight.extrabold, letterSpacing: "-0.02em", lineHeight: 1.2, fontFamily: theme.font.mono }}>
+              {view.uniqueVisitors}
+            </div>
+            <span style={{ fontSize: "0.6875rem", color: theme.color.textFaint }}>distinct actors, trailing ~30 days</span>
+          </div>
+          <div style={{ borderLeft: `1px solid ${theme.color.border}`, paddingLeft: "1rem" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: theme.font.weight.medium, color: theme.color.textMuted }}>Avg. Per Visitor</span>
+            <div style={{ fontSize: "1.875rem", fontWeight: theme.font.weight.extrabold, letterSpacing: "-0.02em", lineHeight: 1.2, fontFamily: theme.font.mono }}>
+              {view.uniqueVisitors > 0 ? (view.count / view.uniqueVisitors).toFixed(1) : "0"}
+            </div>
+            <span style={{ fontSize: "0.6875rem", color: theme.color.textFaint }}>occurrences per unique actor</span>
+          </div>
+          <div style={{ borderLeft: `1px solid ${theme.color.border}`, paddingLeft: "1rem" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: theme.font.weight.medium, color: theme.color.textMuted }}>Window</span>
+            <div style={{ fontSize: "1.875rem", fontWeight: theme.font.weight.extrabold, letterSpacing: "-0.02em", lineHeight: 1.2, fontFamily: theme.font.mono }}>
+              {view.daily.length}
+            </div>
+            <span style={{ fontSize: "0.6875rem", color: theme.color.textFaint }}>
+              {view.daily.length > 0 ? `${view.daily[0].day} to ${view.daily[view.daily.length - 1].day}` : "no data"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {view.daily.length > 0 && (
+        <div style={{ ...card, marginBottom: "1.25rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.75rem" }}>
+            <div style={{ fontWeight: theme.font.weight.bold, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Occurrences per day
+            </div>
+            <div style={{ fontSize: "0.6875rem", color: theme.color.textFaint, fontFamily: theme.font.mono }}>
+              Granularity: Daily · trailing ~30 days
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: "2px", height: 120 }}>
+            {view.daily.map((d) => (
+              <div
+                key={d.day}
+                title={`${d.day}: ${d.count}`}
+                style={{
+                  flex: 1,
+                  minWidth: 4,
+                  height: `${maxDaily > 0 ? Math.max((d.count / maxDaily) * 100, d.count > 0 ? 4 : 0) : 0}%`,
+                  background: maxDaily > 0 && (d.count / maxDaily) < 1 / 3 ? theme.color.thresholdLow : (d.count / maxDaily) < 2 / 3 ? theme.color.thresholdMid : theme.color.thresholdHigh,
+                  borderRadius: 2,
+                }}
+              />
+            ))}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.625rem", color: theme.color.textFaint, fontFamily: theme.font.mono, marginTop: "0.375rem" }}>
+            <span>{view.daily[0].day}</span>
+            <span>{view.daily[view.daily.length - 1].day}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="lantern-grid-3" style={{ marginBottom: "1rem" }}>
+        <DataTableCard
+          title="Countries"
+          icon="fa-solid fa-earth-americas"
+          rows={toRows(view.countries)}
+          exportFilename={`${siteId}-${eventName}-countries.csv`}
+        />
+        <DataTableCard
+          title="Devices"
+          icon="fa-solid fa-laptop"
+          rows={toRows(view.devices)}
+          exportFilename={`${siteId}-${eventName}-devices.csv`}
+        />
+        <DataTableCard
+          title="Pages"
+          icon="fa-regular fa-folder"
+          rows={toRows(view.paths)}
+          exportFilename={`${siteId}-${eventName}-pages.csv`}
+        />
+      </div>
+
+      {view.metadata.length > 0 && (
+        <DataTableCard
+          title="Event Metadata"
+          subtitle="String dimensions attached to this event"
+          icon="fa-solid fa-list-check"
+          rows={toRows(view.metadata)}
+          exportFilename={`${siteId}-${eventName}-metadata.csv`}
+        />
+      )}
+
+      <p style={{ color: theme.color.textMuted, fontSize: "0.8rem", margin: "1rem 0 0" }}>
+        Session stats (all-time, all views): {sessionsSummary.sessionCount} sessions, {sessionsSummary.avgDurationSeconds}s average duration.{" "}
+        <a href={clearHref} style={{ color: theme.color.brandTintTextStrong }}>
+          Clear the event filter
+        </a>{" "}
+        to return to the full overview.
+      </p>
+    </>
   );
 }

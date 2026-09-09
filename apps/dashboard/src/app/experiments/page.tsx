@@ -1,8 +1,10 @@
 import { getAllRawEvents } from "@/lib/dynamodb";
 import { summarizeExperiment } from "@/lib/experiment";
 import type { ExperimentVariantStats } from "@/lib/experiment";
+import { buildEventDetailFilterHref } from "@/lib/filter-ui";
 import { DEFAULT_SITE_ID, getSite } from "@/lib/sites";
 import { theme, card } from "@/lib/theme";
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 
 /**
@@ -48,9 +50,12 @@ export default async function ExperimentsPage({
           <p style={{ color: theme.color.textFaint }}>No experiment data in the last ~30 days.</p>
         ) : (
           <>
-            <VariantTable title="Overall" stats={experiment.overall} />
+            <p style={{ color: theme.color.textMuted, fontSize: "0.75rem", margin: "0 0 0.4rem" }}>
+              Click a variant in the Overall table to filter the Overview dashboard to that variant's impressions.
+            </p>
+            <VariantTable title="Overall" stats={experiment.overall} siteId={siteId} />
             {experiment.byProject.map((p) => (
-              <VariantTable key={p.project} title={p.project} stats={p.variants} />
+              <VariantTable key={p.project} title={p.project} stats={p.variants} siteId={siteId} />
             ))}
           </>
         )}
@@ -59,7 +64,7 @@ export default async function ExperimentsPage({
   );
 }
 
-function VariantTable({ title, stats }: { title: string; stats: ExperimentVariantStats[] }) {
+function VariantTable({ title, stats, siteId }: { title: string; stats: ExperimentVariantStats[]; siteId: string }) {
   return (
     <div style={{ marginTop: "1.1rem" }}>
       <div style={{ fontSize: "0.78rem", fontWeight: theme.font.weight.semibold, color: theme.color.textMuted, marginBottom: "0.4rem" }}>{title}</div>
@@ -77,8 +82,20 @@ function VariantTable({ title, stats }: { title: string; stats: ExperimentVarian
         </thead>
         <tbody>
           {stats.map((s) => (
-            <tr key={s.variant} style={{ borderTop: `1px solid ${theme.color.cardBorder}` }}>
-              <td style={{ padding: "0.5rem 0.6rem 0.5rem 0", fontWeight: theme.font.weight.semibold, textTransform: "capitalize" }}>{s.variant}</td>
+            <tr key={s.variant} className="lantern-row-link" style={{ borderTop: `1px solid ${theme.color.cardBorder}` }}>
+              <td style={{ padding: "0.5rem 0.6rem 0.5rem 0", fontWeight: theme.font.weight.semibold, textTransform: "capitalize" }}>
+                {title === "Overall" ? (
+                  <Link
+                    href={buildEventDetailFilterHref(siteId, "card_variant_view", "variant", s.variant)}
+                    style={{ color: "inherit", textDecoration: "none", display: "block" }}
+                    title={`Filter dashboard to variant "${s.variant}" impressions`}
+                  >
+                    {s.variant}
+                  </Link>
+                ) : (
+                  s.variant
+                )}
+              </td>
               <td style={{ padding: "0.5rem 0.6rem", textAlign: "right" }}>{s.impressions}</td>
               <td style={{ padding: "0.5rem 0.6rem", textAlign: "right" }}>{s.liveClicks}</td>
               <td style={{ padding: "0.5rem 0.6rem", textAlign: "right" }}>{s.expandClicks}</td>

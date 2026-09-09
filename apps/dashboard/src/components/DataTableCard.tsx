@@ -152,7 +152,7 @@ export function Row({ row, maxCount }: { row: DataTableRow; maxCount?: number })
   );
 
   return row.href ? (
-    <Link href={row.href} style={rowStyle}>
+    <Link href={row.href} className="lantern-row-link" style={rowStyle}>
       {content}
     </Link>
   ) : (

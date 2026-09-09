@@ -92,6 +92,15 @@ const globalStyles = `
   .lantern-chip:hover { background: var(--color-brand-tint-bg); color: var(--color-brand-tint-text); }
   .lantern-menu-item { transition: background 0.12s; }
   .lantern-menu-item:hover { background: var(--color-brand-tint-bg); }
+  /* Click-to-filter affordance for data rows/tiles that link into a
+     dimension filter (DevicesCard rows, CustomEventTiles tiles, experiment
+     variant rows, and the generic DataTableCard rows which already
+     carried hrefs). No display/text-decoration resets here: inline styles
+     on each row already own those (and a block display would break table
+     rows on the Experiments page). */
+  .lantern-row-link { transition: background 0.12s; cursor: pointer; }
+  .lantern-row-link:hover { background: var(--color-brand-tint-bg); }
+  .lantern-row-link a, .lantern-row-link:has(a) { color: inherit; }
   .lantern-hamburger { display: none; }
   /* Column counts live here, not inline, specifically so the mobile
      override below can actually take effect - an inline gridTemplateColumns
