@@ -15,5 +15,6 @@ export const SITE_IDS: string[] = [
   "dataroom-technical-assessment",
   "noire-winery-landing-v1",
   "pdfloom-frontend",
+  "lantern-dashboard",
   "test-site",
 ];

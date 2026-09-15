@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SITES, DEFAULT_SITE_ID, getSite } from "../src/lib/sites";
+import { SITES, DEFAULT_SITE_ID, getSite, getPublicSite } from "../src/lib/sites";
 
 describe("site registry", () => {
   it("has unique siteIds", () => {
@@ -33,5 +33,19 @@ describe("site registry", () => {
 
   it("returns undefined for an unknown siteId", () => {
     expect(getSite("nope")).toBeUndefined();
+  });
+});
+
+describe("getPublicSite (public stats gate)", () => {
+  it("returns the opted-in site", () => {
+    expect(getPublicSite("andrii-portfolio")?.siteId).toBe("andrii-portfolio");
+  });
+
+  it("returns undefined for a registered but non-opted site", () => {
+    expect(getPublicSite("ukraine-warmap")).toBeUndefined();
+  });
+
+  it("returns undefined for an unknown siteId", () => {
+    expect(getPublicSite("nope")).toBeUndefined();
   });
 });

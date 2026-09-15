@@ -205,6 +205,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body style={{ margin: 0, background: theme.color.bg, fontFamily: theme.font.family, color: theme.color.text }}>
         {children}
+        {/* Dogfooding: the dashboard tracks itself with its own tracker,
+            self-hosted from this app's public/ dir (same origin, no extra
+            connection). data-spa because Next.js is client-routed - without
+            it only initial loads count, not route changes. No data-record/
+            data-heatmap: the recording endpoint is an ephemeral ngrok host,
+            and heatmap clicks on a private analytics UI carry no signal.
+            siteId "lantern-dashboard" is registered in lib/sites.ts AND
+            ingestion/infra site-ids.ts - both, or raw events never roll up.
+            Owner self-exclusion: EXCLUDED_IPS drops the operator's own
+            traffic at ingest; the lantern_ignore localStorage flag is
+            per-origin, so opting out here never affects the portfolio. */}
+        <script
+          src="/tracker.js"
+          data-site-id="lantern-dashboard"
+          data-endpoint="https://d1rsmughfx8dqq.cloudfront.net/events"
+          data-spa
+          async
+        />
       </body>
     </html>
   );
