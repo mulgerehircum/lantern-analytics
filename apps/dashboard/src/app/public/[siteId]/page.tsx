@@ -8,6 +8,7 @@ import type { SiteInfo } from "@/lib/sites";
 import { theme, card } from "@/lib/theme";
 import { DataTableCard } from "@/components/DataTableCard";
 import type { DataTableRow } from "@/components/DataTableCard";
+import { CountryLabel } from "@/components/CountryLabel";
 
 /**
  * Public stats page (Simple Analytics-style shareable URL): all-time
@@ -18,9 +19,10 @@ import type { DataTableRow } from "@/components/DataTableCard";
  * - Opt-in gate via getPublicSite (publicStats flag) - registered but
  *   non-opted sites and unknown ids alike get notFound(), so the page never
  *   leaks which sites exist.
- * - Aggregate-only: hostname counts and two totals. Never paths, countries,
- *   devices, or session data - the privacy-first pitch has to hold on a
- *   public artifact, same reasoning as the widget endpoint's minimal shape.
+ * - Aggregate-only: referrer hostnames, country codes, and two totals.
+ *   Never paths, devices, or session data - the privacy-first pitch has to
+ *   hold on a public artifact, same reasoning as the widget endpoint's
+ *   minimal shape.
  * - No AppShell: no site switcher, no nav into the private views, no AI
  *   affordances - just a header, two totals, and the referrer table. Theme
  *   tokens come from the root layout, so light/dark works unchanged.
@@ -117,6 +119,13 @@ export default async function PublicStatsPage({ params }: { params: Promise<{ si
     // dashboard's filter views.
   }));
 
+  const countryRows: DataTableRow[] = summary.countries.map((c) => ({
+    key: c.country || "(empty)",
+    count: c.count,
+    // Same no-href rule; flags come from this app's own /public/flags, no CDN.
+    renderKey: () => <CountryLabel code={c.country} />,
+  }));
+
   return (
     <div style={{ maxWidth: "52rem", margin: "0 auto", padding: "2rem 1.2rem 3rem" }}>
       <PublicStatsHeader site={site} />
@@ -143,6 +152,17 @@ export default async function PublicStatsPage({ params }: { params: Promise<{ si
         exportFilename={`${siteId}-sources.csv`}
         footnote="Hostname only, never the full referring URL — no query-string PII ever leaves the tracked site."
       />
+
+      <div style={{ marginTop: "1rem" }}>
+        <DataTableCard
+          title="Where visitors are from"
+          subtitle="All-time pageviews per country"
+          icon="fa-solid fa-earth-americas"
+          rows={countryRows}
+          initialVisibleCount={10}
+          exportFilename={`${siteId}-countries.csv`}
+        />
+      </div>
 
       <p style={{ marginTop: "1.4rem", fontSize: "0.8rem", color: theme.color.textMuted, textAlign: "center" }}>
         Counted by{" "}
